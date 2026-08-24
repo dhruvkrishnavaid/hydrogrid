@@ -1,9 +1,10 @@
-import { TanStackDevtools } from "@tanstack/react-devtools";
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import type React from "react";
 
 import Footer from "../components/Footer";
 import Header from "../components/Header";
+import { SimulatorDrawer } from "../components/SimulatorDrawer";
+import { AuthProvider } from "../lib/auth-context";
 
 import appCss from "../styles.css?url";
 
@@ -20,7 +21,7 @@ export const Route = createRootRoute({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "TanStack Start Starter",
+        title: "HydroGrid | Industrial Water Quality & Purification SCADA",
       },
     ],
     links: [
@@ -40,21 +41,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <HeadContent />
       </head>
-      <body className="font-sans [overflow-wrap:anywhere] antialiased selection:bg-[rgba(79,184,178,0.24)]">
-        <Header />
-        {children}
-        <Footer />
-        <TanStackDevtools
-          config={{
-            position: "bottom-right",
-          }}
-          plugins={[
-            {
-              name: "Tanstack Router",
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
+      <body className="flex min-h-screen flex-col bg-[var(--bg-app)] font-sans text-[var(--text-primary)] antialiased">
+        <AuthProvider>
+          <Header />
+          <div className="flex-1">{children}</div>
+          <SimulatorDrawer />
+          <Footer />
+        </AuthProvider>
         <Scripts />
       </body>
     </html>

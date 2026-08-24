@@ -11,6 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as AlertsRouteImport } from './routes/alerts'
+import { Route as DevicesRouteImport } from './routes/devices'
+import { Route as FlowRouteImport } from './routes/flow'
+import { Route as PurificationRouteImport } from './routes/purification'
+import { Route as SimulatorRouteImport } from './routes/simulator'
+import { Route as WaterQualityRouteImport } from './routes/water-quality'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiSitesRouteImport } from './routes/api/sites'
 import { Route as ApiTestRouteImport } from './routes/api/test'
@@ -60,6 +66,36 @@ const IndexRoute = IndexRouteImport.update({
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlertsRoute = AlertsRouteImport.update({
+  id: '/alerts',
+  path: '/alerts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevicesRoute = DevicesRouteImport.update({
+  id: '/devices',
+  path: '/devices',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FlowRoute = FlowRouteImport.update({
+  id: '/flow',
+  path: '/flow',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurificationRoute = PurificationRouteImport.update({
+  id: '/purification',
+  path: '/purification',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SimulatorRoute = SimulatorRouteImport.update({
+  id: '/simulator',
+  path: '/simulator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WaterQualityRoute = WaterQualityRouteImport.update({
+  id: '/water-quality',
+  path: '/water-quality',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -288,6 +324,12 @@ const ApiSitesSiteIdAlertsAlertIdAcknowledgeRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/alerts': typeof AlertsRoute
+  '/devices': typeof DevicesRoute
+  '/flow': typeof FlowRoute
+  '/purification': typeof PurificationRoute
+  '/simulator': typeof SimulatorRoute
+  '/water-quality': typeof WaterQualityRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sites': typeof ApiSitesRouteWithChildren
   '/api/test': typeof ApiTestRouteWithChildren
@@ -332,6 +374,12 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/alerts': typeof AlertsRoute
+  '/devices': typeof DevicesRoute
+  '/flow': typeof FlowRoute
+  '/purification': typeof PurificationRoute
+  '/simulator': typeof SimulatorRoute
+  '/water-quality': typeof WaterQualityRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sites': typeof ApiSitesRouteWithChildren
   '/api/test': typeof ApiTestRouteWithChildren
@@ -377,6 +425,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/alerts': typeof AlertsRoute
+  '/devices': typeof DevicesRoute
+  '/flow': typeof FlowRoute
+  '/purification': typeof PurificationRoute
+  '/simulator': typeof SimulatorRoute
+  '/water-quality': typeof WaterQualityRoute
   '/api/health': typeof ApiHealthRoute
   '/api/sites': typeof ApiSitesRouteWithChildren
   '/api/test': typeof ApiTestRouteWithChildren
@@ -423,6 +477,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/alerts'
+    | '/devices'
+    | '/flow'
+    | '/purification'
+    | '/simulator'
+    | '/water-quality'
     | '/api/health'
     | '/api/sites'
     | '/api/test'
@@ -467,6 +527,12 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/alerts'
+    | '/devices'
+    | '/flow'
+    | '/purification'
+    | '/simulator'
+    | '/water-quality'
     | '/api/health'
     | '/api/sites'
     | '/api/test'
@@ -511,6 +577,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/alerts'
+    | '/devices'
+    | '/flow'
+    | '/purification'
+    | '/simulator'
+    | '/water-quality'
     | '/api/health'
     | '/api/sites'
     | '/api/test'
@@ -556,6 +628,12 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AlertsRoute: typeof AlertsRoute
+  DevicesRoute: typeof DevicesRoute
+  FlowRoute: typeof FlowRoute
+  PurificationRoute: typeof PurificationRoute
+  SimulatorRoute: typeof SimulatorRoute
+  WaterQualityRoute: typeof WaterQualityRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiSitesRoute: typeof ApiSitesRouteWithChildren
   ApiTestRoute: typeof ApiTestRouteWithChildren
@@ -580,6 +658,48 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about'
       preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alerts': {
+      id: '/alerts'
+      path: '/alerts'
+      fullPath: '/alerts'
+      preLoaderRoute: typeof AlertsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/devices': {
+      id: '/devices'
+      path: '/devices'
+      fullPath: '/devices'
+      preLoaderRoute: typeof DevicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/flow': {
+      id: '/flow'
+      path: '/flow'
+      fullPath: '/flow'
+      preLoaderRoute: typeof FlowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purification': {
+      id: '/purification'
+      path: '/purification'
+      fullPath: '/purification'
+      preLoaderRoute: typeof PurificationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/simulator': {
+      id: '/simulator'
+      path: '/simulator'
+      fullPath: '/simulator'
+      preLoaderRoute: typeof SimulatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/water-quality': {
+      id: '/water-quality'
+      path: '/water-quality'
+      fullPath: '/water-quality'
+      preLoaderRoute: typeof WaterQualityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -1027,6 +1147,12 @@ const ApiDevSimulatorRouteWithChildren = ApiDevSimulatorRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AlertsRoute: AlertsRoute,
+  DevicesRoute: DevicesRoute,
+  FlowRoute: FlowRoute,
+  PurificationRoute: PurificationRoute,
+  SimulatorRoute: SimulatorRoute,
+  WaterQualityRoute: WaterQualityRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiSitesRoute: ApiSitesRouteWithChildren,
   ApiTestRoute: ApiTestRouteWithChildren,

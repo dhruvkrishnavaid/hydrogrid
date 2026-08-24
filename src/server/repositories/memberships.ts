@@ -7,7 +7,8 @@ import {
 export async function getUserMemberships(
   userId: string,
 ): Promise<Array<SiteMembership>> {
-  const supabase = getSupabaseServerClient() ?? getSupabaseAdminClient();
+  // Use admin client to bypass RLS — this is a server-only operation
+  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase) {
     return [];
   }
@@ -29,7 +30,8 @@ export async function getUserSiteRole(
   userId: string,
   siteId: string,
 ): Promise<UserRole | null> {
-  const supabase = getSupabaseServerClient() ?? getSupabaseAdminClient();
+  // Use admin client to bypass RLS — this is a server-only operation
+  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase) {
     return null;
   }

@@ -25,7 +25,8 @@ export async function getEventsBySiteId(
   siteId: string,
   options?: GetEventsOptions,
 ): Promise<Array<EventRecord>> {
-  const supabase = getSupabaseServerClient() ?? getSupabaseAdminClient();
+  // Use admin client to bypass RLS — authorization enforced at the API layer
+  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase) {
     return [];
   }

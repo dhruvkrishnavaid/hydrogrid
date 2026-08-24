@@ -15,7 +15,8 @@ export interface InsertDevice {
 export async function getDevicesBySiteId(
   siteId: string,
 ): Promise<Array<Device>> {
-  const supabase = getSupabaseServerClient() ?? getSupabaseAdminClient();
+  // Use admin client to bypass RLS — authorization enforced at the API layer
+  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase) {
     return [];
   }
@@ -35,7 +36,7 @@ export async function getDevicesBySiteId(
 }
 
 export async function getDeviceById(id: string): Promise<Device | null> {
-  const supabase = getSupabaseServerClient() ?? getSupabaseAdminClient();
+  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase) {
     return null;
   }

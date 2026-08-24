@@ -12,8 +12,45 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as ApiSitesRouteImport } from './routes/api/sites'
 import { Route as ApiTestRouteImport } from './routes/api/test'
+import { Route as ApiDashboardOverviewRouteImport } from './routes/api/dashboard.overview'
+import { Route as ApiDemoSimulateRouteImport } from './routes/api/demo.simulate'
+import { Route as ApiDevSimulatorRouteImport } from './routes/api/dev.simulator'
+import { Route as ApiEventsStreamRouteImport } from './routes/api/events.stream'
+import { Route as ApiSitesSiteIdRouteImport } from './routes/api/sites.$siteId'
 import { Route as ApiTestAuthRouteImport } from './routes/api/test.auth'
+import { Route as ApiDevSimulatorCalibrationRequiredRouteImport } from './routes/api/dev.simulator.calibration-required'
+import { Route as ApiDevSimulatorDeviceOfflineRouteImport } from './routes/api/dev.simulator.device-offline'
+import { Route as ApiDevSimulatorDeviceOnlineRouteImport } from './routes/api/dev.simulator.device-online'
+import { Route as ApiDevSimulatorFilterWarningRouteImport } from './routes/api/dev.simulator.filter-warning'
+import { Route as ApiDevSimulatorLeakRouteImport } from './routes/api/dev.simulator.leak'
+import { Route as ApiDevSimulatorNormalRouteImport } from './routes/api/dev.simulator.normal'
+import { Route as ApiDevSimulatorQualityFailureRouteImport } from './routes/api/dev.simulator.quality-failure'
+import { Route as ApiDevSimulatorResetRouteImport } from './routes/api/dev.simulator.reset'
+import { Route as ApiDevSimulatorSensorDriftRouteImport } from './routes/api/dev.simulator.sensor-drift'
+import { Route as ApiSitesSiteIdAlertsRouteImport } from './routes/api/sites.$siteId.alerts'
+import { Route as ApiSitesSiteIdCalibrationRouteImport } from './routes/api/sites.$siteId.calibration'
+import { Route as ApiSitesSiteIdCalibrationsRouteImport } from './routes/api/sites.$siteId.calibrations'
+import { Route as ApiSitesSiteIdDevicesRouteImport } from './routes/api/sites.$siteId.devices'
+import { Route as ApiSitesSiteIdEventsRouteImport } from './routes/api/sites.$siteId.events'
+import { Route as ApiSitesSiteIdLeaksRouteImport } from './routes/api/sites.$siteId.leaks'
+import { Route as ApiSitesSiteIdMaintenanceRouteImport } from './routes/api/sites.$siteId.maintenance'
+import { Route as ApiSitesSiteIdPurificationRouteImport } from './routes/api/sites.$siteId.purification'
+import { Route as ApiSitesSiteIdQualityRouteImport } from './routes/api/sites.$siteId.quality'
+import { Route as ApiSitesSiteIdQualityGateRouteImport } from './routes/api/sites.$siteId.quality-gate'
+import { Route as ApiSitesSiteIdTelemetryRouteImport } from './routes/api/sites.$siteId.telemetry'
+import { Route as ApiSitesSiteIdWaterSafetyRouteImport } from './routes/api/sites.$siteId.water-safety'
+import { Route as ApiDevicesDeviceIdSensorsHealthRouteImport } from './routes/api/devices.$deviceId.sensors.health'
+import { Route as ApiSitesSiteIdEventsStreamRouteImport } from './routes/api/sites.$siteId.events.stream'
+import { Route as ApiSitesSiteIdFlowCurrentRouteImport } from './routes/api/sites.$siteId.flow.current'
+import { Route as ApiSitesSiteIdFlowHistoryRouteImport } from './routes/api/sites.$siteId.flow.history'
+import { Route as ApiSitesSiteIdLeaksCurrentRouteImport } from './routes/api/sites.$siteId.leaks.current'
+import { Route as ApiSitesSiteIdMaintenanceStatusRouteImport } from './routes/api/sites.$siteId.maintenance.status'
+import { Route as ApiSitesSiteIdPurificationStatusRouteImport } from './routes/api/sites.$siteId.purification.status'
+import { Route as ApiSitesSiteIdWaterQualityCurrentRouteImport } from './routes/api/sites.$siteId.water-quality.current'
+import { Route as ApiSitesSiteIdWaterQualityHistoryRouteImport } from './routes/api/sites.$siteId.water-quality.history'
+import { Route as ApiSitesSiteIdAlertsAlertIdAcknowledgeRouteImport } from './routes/api/sites.$siteId.alerts.$alertId.acknowledge'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -30,53 +67,503 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSitesRoute = ApiSitesRouteImport.update({
+  id: '/api/sites',
+  path: '/api/sites',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTestRoute = ApiTestRouteImport.update({
   id: '/api/test',
   path: '/api/test',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDashboardOverviewRoute = ApiDashboardOverviewRouteImport.update({
+  id: '/api/dashboard/overview',
+  path: '/api/dashboard/overview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDemoSimulateRoute = ApiDemoSimulateRouteImport.update({
+  id: '/api/demo/simulate',
+  path: '/api/demo/simulate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDevSimulatorRoute = ApiDevSimulatorRouteImport.update({
+  id: '/api/dev/simulator',
+  path: '/api/dev/simulator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEventsStreamRoute = ApiEventsStreamRouteImport.update({
+  id: '/api/events/stream',
+  path: '/api/events/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSitesSiteIdRoute = ApiSitesSiteIdRouteImport.update({
+  id: '/$siteId',
+  path: '/$siteId',
+  getParentRoute: () => ApiSitesRoute,
 } as any)
 const ApiTestAuthRoute = ApiTestAuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => ApiTestRoute,
 } as any)
+const ApiDevSimulatorCalibrationRequiredRoute =
+  ApiDevSimulatorCalibrationRequiredRouteImport.update({
+    id: '/calibration-required',
+    path: '/calibration-required',
+    getParentRoute: () => ApiDevSimulatorRoute,
+  } as any)
+const ApiDevSimulatorDeviceOfflineRoute =
+  ApiDevSimulatorDeviceOfflineRouteImport.update({
+    id: '/device-offline',
+    path: '/device-offline',
+    getParentRoute: () => ApiDevSimulatorRoute,
+  } as any)
+const ApiDevSimulatorDeviceOnlineRoute =
+  ApiDevSimulatorDeviceOnlineRouteImport.update({
+    id: '/device-online',
+    path: '/device-online',
+    getParentRoute: () => ApiDevSimulatorRoute,
+  } as any)
+const ApiDevSimulatorFilterWarningRoute =
+  ApiDevSimulatorFilterWarningRouteImport.update({
+    id: '/filter-warning',
+    path: '/filter-warning',
+    getParentRoute: () => ApiDevSimulatorRoute,
+  } as any)
+const ApiDevSimulatorLeakRoute = ApiDevSimulatorLeakRouteImport.update({
+  id: '/leak',
+  path: '/leak',
+  getParentRoute: () => ApiDevSimulatorRoute,
+} as any)
+const ApiDevSimulatorNormalRoute = ApiDevSimulatorNormalRouteImport.update({
+  id: '/normal',
+  path: '/normal',
+  getParentRoute: () => ApiDevSimulatorRoute,
+} as any)
+const ApiDevSimulatorQualityFailureRoute =
+  ApiDevSimulatorQualityFailureRouteImport.update({
+    id: '/quality-failure',
+    path: '/quality-failure',
+    getParentRoute: () => ApiDevSimulatorRoute,
+  } as any)
+const ApiDevSimulatorResetRoute = ApiDevSimulatorResetRouteImport.update({
+  id: '/reset',
+  path: '/reset',
+  getParentRoute: () => ApiDevSimulatorRoute,
+} as any)
+const ApiDevSimulatorSensorDriftRoute =
+  ApiDevSimulatorSensorDriftRouteImport.update({
+    id: '/sensor-drift',
+    path: '/sensor-drift',
+    getParentRoute: () => ApiDevSimulatorRoute,
+  } as any)
+const ApiSitesSiteIdAlertsRoute = ApiSitesSiteIdAlertsRouteImport.update({
+  id: '/alerts',
+  path: '/alerts',
+  getParentRoute: () => ApiSitesSiteIdRoute,
+} as any)
+const ApiSitesSiteIdCalibrationRoute =
+  ApiSitesSiteIdCalibrationRouteImport.update({
+    id: '/calibration',
+    path: '/calibration',
+    getParentRoute: () => ApiSitesSiteIdRoute,
+  } as any)
+const ApiSitesSiteIdCalibrationsRoute =
+  ApiSitesSiteIdCalibrationsRouteImport.update({
+    id: '/calibrations',
+    path: '/calibrations',
+    getParentRoute: () => ApiSitesSiteIdRoute,
+  } as any)
+const ApiSitesSiteIdDevicesRoute = ApiSitesSiteIdDevicesRouteImport.update({
+  id: '/devices',
+  path: '/devices',
+  getParentRoute: () => ApiSitesSiteIdRoute,
+} as any)
+const ApiSitesSiteIdEventsRoute = ApiSitesSiteIdEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => ApiSitesSiteIdRoute,
+} as any)
+const ApiSitesSiteIdLeaksRoute = ApiSitesSiteIdLeaksRouteImport.update({
+  id: '/leaks',
+  path: '/leaks',
+  getParentRoute: () => ApiSitesSiteIdRoute,
+} as any)
+const ApiSitesSiteIdMaintenanceRoute =
+  ApiSitesSiteIdMaintenanceRouteImport.update({
+    id: '/maintenance',
+    path: '/maintenance',
+    getParentRoute: () => ApiSitesSiteIdRoute,
+  } as any)
+const ApiSitesSiteIdPurificationRoute =
+  ApiSitesSiteIdPurificationRouteImport.update({
+    id: '/purification',
+    path: '/purification',
+    getParentRoute: () => ApiSitesSiteIdRoute,
+  } as any)
+const ApiSitesSiteIdQualityRoute = ApiSitesSiteIdQualityRouteImport.update({
+  id: '/quality',
+  path: '/quality',
+  getParentRoute: () => ApiSitesSiteIdRoute,
+} as any)
+const ApiSitesSiteIdQualityGateRoute =
+  ApiSitesSiteIdQualityGateRouteImport.update({
+    id: '/quality-gate',
+    path: '/quality-gate',
+    getParentRoute: () => ApiSitesSiteIdRoute,
+  } as any)
+const ApiSitesSiteIdTelemetryRoute = ApiSitesSiteIdTelemetryRouteImport.update({
+  id: '/telemetry',
+  path: '/telemetry',
+  getParentRoute: () => ApiSitesSiteIdRoute,
+} as any)
+const ApiSitesSiteIdWaterSafetyRoute =
+  ApiSitesSiteIdWaterSafetyRouteImport.update({
+    id: '/water-safety',
+    path: '/water-safety',
+    getParentRoute: () => ApiSitesSiteIdRoute,
+  } as any)
+const ApiDevicesDeviceIdSensorsHealthRoute =
+  ApiDevicesDeviceIdSensorsHealthRouteImport.update({
+    id: '/api/devices/$deviceId/sensors/health',
+    path: '/api/devices/$deviceId/sensors/health',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSitesSiteIdEventsStreamRoute =
+  ApiSitesSiteIdEventsStreamRouteImport.update({
+    id: '/stream',
+    path: '/stream',
+    getParentRoute: () => ApiSitesSiteIdEventsRoute,
+  } as any)
+const ApiSitesSiteIdFlowCurrentRoute =
+  ApiSitesSiteIdFlowCurrentRouteImport.update({
+    id: '/flow/current',
+    path: '/flow/current',
+    getParentRoute: () => ApiSitesSiteIdRoute,
+  } as any)
+const ApiSitesSiteIdFlowHistoryRoute =
+  ApiSitesSiteIdFlowHistoryRouteImport.update({
+    id: '/flow/history',
+    path: '/flow/history',
+    getParentRoute: () => ApiSitesSiteIdRoute,
+  } as any)
+const ApiSitesSiteIdLeaksCurrentRoute =
+  ApiSitesSiteIdLeaksCurrentRouteImport.update({
+    id: '/current',
+    path: '/current',
+    getParentRoute: () => ApiSitesSiteIdLeaksRoute,
+  } as any)
+const ApiSitesSiteIdMaintenanceStatusRoute =
+  ApiSitesSiteIdMaintenanceStatusRouteImport.update({
+    id: '/status',
+    path: '/status',
+    getParentRoute: () => ApiSitesSiteIdMaintenanceRoute,
+  } as any)
+const ApiSitesSiteIdPurificationStatusRoute =
+  ApiSitesSiteIdPurificationStatusRouteImport.update({
+    id: '/status',
+    path: '/status',
+    getParentRoute: () => ApiSitesSiteIdPurificationRoute,
+  } as any)
+const ApiSitesSiteIdWaterQualityCurrentRoute =
+  ApiSitesSiteIdWaterQualityCurrentRouteImport.update({
+    id: '/water-quality/current',
+    path: '/water-quality/current',
+    getParentRoute: () => ApiSitesSiteIdRoute,
+  } as any)
+const ApiSitesSiteIdWaterQualityHistoryRoute =
+  ApiSitesSiteIdWaterQualityHistoryRouteImport.update({
+    id: '/water-quality/history',
+    path: '/water-quality/history',
+    getParentRoute: () => ApiSitesSiteIdRoute,
+  } as any)
+const ApiSitesSiteIdAlertsAlertIdAcknowledgeRoute =
+  ApiSitesSiteIdAlertsAlertIdAcknowledgeRouteImport.update({
+    id: '/$alertId/acknowledge',
+    path: '/$alertId/acknowledge',
+    getParentRoute: () => ApiSitesSiteIdAlertsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/sites': typeof ApiSitesRouteWithChildren
   '/api/test': typeof ApiTestRouteWithChildren
+  '/api/dashboard/overview': typeof ApiDashboardOverviewRoute
+  '/api/demo/simulate': typeof ApiDemoSimulateRoute
+  '/api/dev/simulator': typeof ApiDevSimulatorRouteWithChildren
+  '/api/events/stream': typeof ApiEventsStreamRoute
+  '/api/sites/$siteId': typeof ApiSitesSiteIdRouteWithChildren
   '/api/test/auth': typeof ApiTestAuthRoute
+  '/api/dev/simulator/calibration-required': typeof ApiDevSimulatorCalibrationRequiredRoute
+  '/api/dev/simulator/device-offline': typeof ApiDevSimulatorDeviceOfflineRoute
+  '/api/dev/simulator/device-online': typeof ApiDevSimulatorDeviceOnlineRoute
+  '/api/dev/simulator/filter-warning': typeof ApiDevSimulatorFilterWarningRoute
+  '/api/dev/simulator/leak': typeof ApiDevSimulatorLeakRoute
+  '/api/dev/simulator/normal': typeof ApiDevSimulatorNormalRoute
+  '/api/dev/simulator/quality-failure': typeof ApiDevSimulatorQualityFailureRoute
+  '/api/dev/simulator/reset': typeof ApiDevSimulatorResetRoute
+  '/api/dev/simulator/sensor-drift': typeof ApiDevSimulatorSensorDriftRoute
+  '/api/sites/$siteId/alerts': typeof ApiSitesSiteIdAlertsRouteWithChildren
+  '/api/sites/$siteId/calibration': typeof ApiSitesSiteIdCalibrationRoute
+  '/api/sites/$siteId/calibrations': typeof ApiSitesSiteIdCalibrationsRoute
+  '/api/sites/$siteId/devices': typeof ApiSitesSiteIdDevicesRoute
+  '/api/sites/$siteId/events': typeof ApiSitesSiteIdEventsRouteWithChildren
+  '/api/sites/$siteId/leaks': typeof ApiSitesSiteIdLeaksRouteWithChildren
+  '/api/sites/$siteId/maintenance': typeof ApiSitesSiteIdMaintenanceRouteWithChildren
+  '/api/sites/$siteId/purification': typeof ApiSitesSiteIdPurificationRouteWithChildren
+  '/api/sites/$siteId/quality': typeof ApiSitesSiteIdQualityRoute
+  '/api/sites/$siteId/quality-gate': typeof ApiSitesSiteIdQualityGateRoute
+  '/api/sites/$siteId/telemetry': typeof ApiSitesSiteIdTelemetryRoute
+  '/api/sites/$siteId/water-safety': typeof ApiSitesSiteIdWaterSafetyRoute
+  '/api/devices/$deviceId/sensors/health': typeof ApiDevicesDeviceIdSensorsHealthRoute
+  '/api/sites/$siteId/events/stream': typeof ApiSitesSiteIdEventsStreamRoute
+  '/api/sites/$siteId/flow/current': typeof ApiSitesSiteIdFlowCurrentRoute
+  '/api/sites/$siteId/flow/history': typeof ApiSitesSiteIdFlowHistoryRoute
+  '/api/sites/$siteId/leaks/current': typeof ApiSitesSiteIdLeaksCurrentRoute
+  '/api/sites/$siteId/maintenance/status': typeof ApiSitesSiteIdMaintenanceStatusRoute
+  '/api/sites/$siteId/purification/status': typeof ApiSitesSiteIdPurificationStatusRoute
+  '/api/sites/$siteId/water-quality/current': typeof ApiSitesSiteIdWaterQualityCurrentRoute
+  '/api/sites/$siteId/water-quality/history': typeof ApiSitesSiteIdWaterQualityHistoryRoute
+  '/api/sites/$siteId/alerts/$alertId/acknowledge': typeof ApiSitesSiteIdAlertsAlertIdAcknowledgeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/sites': typeof ApiSitesRouteWithChildren
   '/api/test': typeof ApiTestRouteWithChildren
+  '/api/dashboard/overview': typeof ApiDashboardOverviewRoute
+  '/api/demo/simulate': typeof ApiDemoSimulateRoute
+  '/api/dev/simulator': typeof ApiDevSimulatorRouteWithChildren
+  '/api/events/stream': typeof ApiEventsStreamRoute
+  '/api/sites/$siteId': typeof ApiSitesSiteIdRouteWithChildren
   '/api/test/auth': typeof ApiTestAuthRoute
+  '/api/dev/simulator/calibration-required': typeof ApiDevSimulatorCalibrationRequiredRoute
+  '/api/dev/simulator/device-offline': typeof ApiDevSimulatorDeviceOfflineRoute
+  '/api/dev/simulator/device-online': typeof ApiDevSimulatorDeviceOnlineRoute
+  '/api/dev/simulator/filter-warning': typeof ApiDevSimulatorFilterWarningRoute
+  '/api/dev/simulator/leak': typeof ApiDevSimulatorLeakRoute
+  '/api/dev/simulator/normal': typeof ApiDevSimulatorNormalRoute
+  '/api/dev/simulator/quality-failure': typeof ApiDevSimulatorQualityFailureRoute
+  '/api/dev/simulator/reset': typeof ApiDevSimulatorResetRoute
+  '/api/dev/simulator/sensor-drift': typeof ApiDevSimulatorSensorDriftRoute
+  '/api/sites/$siteId/alerts': typeof ApiSitesSiteIdAlertsRouteWithChildren
+  '/api/sites/$siteId/calibration': typeof ApiSitesSiteIdCalibrationRoute
+  '/api/sites/$siteId/calibrations': typeof ApiSitesSiteIdCalibrationsRoute
+  '/api/sites/$siteId/devices': typeof ApiSitesSiteIdDevicesRoute
+  '/api/sites/$siteId/events': typeof ApiSitesSiteIdEventsRouteWithChildren
+  '/api/sites/$siteId/leaks': typeof ApiSitesSiteIdLeaksRouteWithChildren
+  '/api/sites/$siteId/maintenance': typeof ApiSitesSiteIdMaintenanceRouteWithChildren
+  '/api/sites/$siteId/purification': typeof ApiSitesSiteIdPurificationRouteWithChildren
+  '/api/sites/$siteId/quality': typeof ApiSitesSiteIdQualityRoute
+  '/api/sites/$siteId/quality-gate': typeof ApiSitesSiteIdQualityGateRoute
+  '/api/sites/$siteId/telemetry': typeof ApiSitesSiteIdTelemetryRoute
+  '/api/sites/$siteId/water-safety': typeof ApiSitesSiteIdWaterSafetyRoute
+  '/api/devices/$deviceId/sensors/health': typeof ApiDevicesDeviceIdSensorsHealthRoute
+  '/api/sites/$siteId/events/stream': typeof ApiSitesSiteIdEventsStreamRoute
+  '/api/sites/$siteId/flow/current': typeof ApiSitesSiteIdFlowCurrentRoute
+  '/api/sites/$siteId/flow/history': typeof ApiSitesSiteIdFlowHistoryRoute
+  '/api/sites/$siteId/leaks/current': typeof ApiSitesSiteIdLeaksCurrentRoute
+  '/api/sites/$siteId/maintenance/status': typeof ApiSitesSiteIdMaintenanceStatusRoute
+  '/api/sites/$siteId/purification/status': typeof ApiSitesSiteIdPurificationStatusRoute
+  '/api/sites/$siteId/water-quality/current': typeof ApiSitesSiteIdWaterQualityCurrentRoute
+  '/api/sites/$siteId/water-quality/history': typeof ApiSitesSiteIdWaterQualityHistoryRoute
+  '/api/sites/$siteId/alerts/$alertId/acknowledge': typeof ApiSitesSiteIdAlertsAlertIdAcknowledgeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/sites': typeof ApiSitesRouteWithChildren
   '/api/test': typeof ApiTestRouteWithChildren
+  '/api/dashboard/overview': typeof ApiDashboardOverviewRoute
+  '/api/demo/simulate': typeof ApiDemoSimulateRoute
+  '/api/dev/simulator': typeof ApiDevSimulatorRouteWithChildren
+  '/api/events/stream': typeof ApiEventsStreamRoute
+  '/api/sites/$siteId': typeof ApiSitesSiteIdRouteWithChildren
   '/api/test/auth': typeof ApiTestAuthRoute
+  '/api/dev/simulator/calibration-required': typeof ApiDevSimulatorCalibrationRequiredRoute
+  '/api/dev/simulator/device-offline': typeof ApiDevSimulatorDeviceOfflineRoute
+  '/api/dev/simulator/device-online': typeof ApiDevSimulatorDeviceOnlineRoute
+  '/api/dev/simulator/filter-warning': typeof ApiDevSimulatorFilterWarningRoute
+  '/api/dev/simulator/leak': typeof ApiDevSimulatorLeakRoute
+  '/api/dev/simulator/normal': typeof ApiDevSimulatorNormalRoute
+  '/api/dev/simulator/quality-failure': typeof ApiDevSimulatorQualityFailureRoute
+  '/api/dev/simulator/reset': typeof ApiDevSimulatorResetRoute
+  '/api/dev/simulator/sensor-drift': typeof ApiDevSimulatorSensorDriftRoute
+  '/api/sites/$siteId/alerts': typeof ApiSitesSiteIdAlertsRouteWithChildren
+  '/api/sites/$siteId/calibration': typeof ApiSitesSiteIdCalibrationRoute
+  '/api/sites/$siteId/calibrations': typeof ApiSitesSiteIdCalibrationsRoute
+  '/api/sites/$siteId/devices': typeof ApiSitesSiteIdDevicesRoute
+  '/api/sites/$siteId/events': typeof ApiSitesSiteIdEventsRouteWithChildren
+  '/api/sites/$siteId/leaks': typeof ApiSitesSiteIdLeaksRouteWithChildren
+  '/api/sites/$siteId/maintenance': typeof ApiSitesSiteIdMaintenanceRouteWithChildren
+  '/api/sites/$siteId/purification': typeof ApiSitesSiteIdPurificationRouteWithChildren
+  '/api/sites/$siteId/quality': typeof ApiSitesSiteIdQualityRoute
+  '/api/sites/$siteId/quality-gate': typeof ApiSitesSiteIdQualityGateRoute
+  '/api/sites/$siteId/telemetry': typeof ApiSitesSiteIdTelemetryRoute
+  '/api/sites/$siteId/water-safety': typeof ApiSitesSiteIdWaterSafetyRoute
+  '/api/devices/$deviceId/sensors/health': typeof ApiDevicesDeviceIdSensorsHealthRoute
+  '/api/sites/$siteId/events/stream': typeof ApiSitesSiteIdEventsStreamRoute
+  '/api/sites/$siteId/flow/current': typeof ApiSitesSiteIdFlowCurrentRoute
+  '/api/sites/$siteId/flow/history': typeof ApiSitesSiteIdFlowHistoryRoute
+  '/api/sites/$siteId/leaks/current': typeof ApiSitesSiteIdLeaksCurrentRoute
+  '/api/sites/$siteId/maintenance/status': typeof ApiSitesSiteIdMaintenanceStatusRoute
+  '/api/sites/$siteId/purification/status': typeof ApiSitesSiteIdPurificationStatusRoute
+  '/api/sites/$siteId/water-quality/current': typeof ApiSitesSiteIdWaterQualityCurrentRoute
+  '/api/sites/$siteId/water-quality/history': typeof ApiSitesSiteIdWaterQualityHistoryRoute
+  '/api/sites/$siteId/alerts/$alertId/acknowledge': typeof ApiSitesSiteIdAlertsAlertIdAcknowledgeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/api/health' | '/api/test' | '/api/test/auth'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/api/health'
+    | '/api/sites'
+    | '/api/test'
+    | '/api/dashboard/overview'
+    | '/api/demo/simulate'
+    | '/api/dev/simulator'
+    | '/api/events/stream'
+    | '/api/sites/$siteId'
+    | '/api/test/auth'
+    | '/api/dev/simulator/calibration-required'
+    | '/api/dev/simulator/device-offline'
+    | '/api/dev/simulator/device-online'
+    | '/api/dev/simulator/filter-warning'
+    | '/api/dev/simulator/leak'
+    | '/api/dev/simulator/normal'
+    | '/api/dev/simulator/quality-failure'
+    | '/api/dev/simulator/reset'
+    | '/api/dev/simulator/sensor-drift'
+    | '/api/sites/$siteId/alerts'
+    | '/api/sites/$siteId/calibration'
+    | '/api/sites/$siteId/calibrations'
+    | '/api/sites/$siteId/devices'
+    | '/api/sites/$siteId/events'
+    | '/api/sites/$siteId/leaks'
+    | '/api/sites/$siteId/maintenance'
+    | '/api/sites/$siteId/purification'
+    | '/api/sites/$siteId/quality'
+    | '/api/sites/$siteId/quality-gate'
+    | '/api/sites/$siteId/telemetry'
+    | '/api/sites/$siteId/water-safety'
+    | '/api/devices/$deviceId/sensors/health'
+    | '/api/sites/$siteId/events/stream'
+    | '/api/sites/$siteId/flow/current'
+    | '/api/sites/$siteId/flow/history'
+    | '/api/sites/$siteId/leaks/current'
+    | '/api/sites/$siteId/maintenance/status'
+    | '/api/sites/$siteId/purification/status'
+    | '/api/sites/$siteId/water-quality/current'
+    | '/api/sites/$siteId/water-quality/history'
+    | '/api/sites/$siteId/alerts/$alertId/acknowledge'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/api/health' | '/api/test' | '/api/test/auth'
+  to:
+    | '/'
+    | '/about'
+    | '/api/health'
+    | '/api/sites'
+    | '/api/test'
+    | '/api/dashboard/overview'
+    | '/api/demo/simulate'
+    | '/api/dev/simulator'
+    | '/api/events/stream'
+    | '/api/sites/$siteId'
+    | '/api/test/auth'
+    | '/api/dev/simulator/calibration-required'
+    | '/api/dev/simulator/device-offline'
+    | '/api/dev/simulator/device-online'
+    | '/api/dev/simulator/filter-warning'
+    | '/api/dev/simulator/leak'
+    | '/api/dev/simulator/normal'
+    | '/api/dev/simulator/quality-failure'
+    | '/api/dev/simulator/reset'
+    | '/api/dev/simulator/sensor-drift'
+    | '/api/sites/$siteId/alerts'
+    | '/api/sites/$siteId/calibration'
+    | '/api/sites/$siteId/calibrations'
+    | '/api/sites/$siteId/devices'
+    | '/api/sites/$siteId/events'
+    | '/api/sites/$siteId/leaks'
+    | '/api/sites/$siteId/maintenance'
+    | '/api/sites/$siteId/purification'
+    | '/api/sites/$siteId/quality'
+    | '/api/sites/$siteId/quality-gate'
+    | '/api/sites/$siteId/telemetry'
+    | '/api/sites/$siteId/water-safety'
+    | '/api/devices/$deviceId/sensors/health'
+    | '/api/sites/$siteId/events/stream'
+    | '/api/sites/$siteId/flow/current'
+    | '/api/sites/$siteId/flow/history'
+    | '/api/sites/$siteId/leaks/current'
+    | '/api/sites/$siteId/maintenance/status'
+    | '/api/sites/$siteId/purification/status'
+    | '/api/sites/$siteId/water-quality/current'
+    | '/api/sites/$siteId/water-quality/history'
+    | '/api/sites/$siteId/alerts/$alertId/acknowledge'
   id:
-    '__root__' | '/' | '/about' | '/api/health' | '/api/test' | '/api/test/auth'
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/api/health'
+    | '/api/sites'
+    | '/api/test'
+    | '/api/dashboard/overview'
+    | '/api/demo/simulate'
+    | '/api/dev/simulator'
+    | '/api/events/stream'
+    | '/api/sites/$siteId'
+    | '/api/test/auth'
+    | '/api/dev/simulator/calibration-required'
+    | '/api/dev/simulator/device-offline'
+    | '/api/dev/simulator/device-online'
+    | '/api/dev/simulator/filter-warning'
+    | '/api/dev/simulator/leak'
+    | '/api/dev/simulator/normal'
+    | '/api/dev/simulator/quality-failure'
+    | '/api/dev/simulator/reset'
+    | '/api/dev/simulator/sensor-drift'
+    | '/api/sites/$siteId/alerts'
+    | '/api/sites/$siteId/calibration'
+    | '/api/sites/$siteId/calibrations'
+    | '/api/sites/$siteId/devices'
+    | '/api/sites/$siteId/events'
+    | '/api/sites/$siteId/leaks'
+    | '/api/sites/$siteId/maintenance'
+    | '/api/sites/$siteId/purification'
+    | '/api/sites/$siteId/quality'
+    | '/api/sites/$siteId/quality-gate'
+    | '/api/sites/$siteId/telemetry'
+    | '/api/sites/$siteId/water-safety'
+    | '/api/devices/$deviceId/sensors/health'
+    | '/api/sites/$siteId/events/stream'
+    | '/api/sites/$siteId/flow/current'
+    | '/api/sites/$siteId/flow/history'
+    | '/api/sites/$siteId/leaks/current'
+    | '/api/sites/$siteId/maintenance/status'
+    | '/api/sites/$siteId/purification/status'
+    | '/api/sites/$siteId/water-quality/current'
+    | '/api/sites/$siteId/water-quality/history'
+    | '/api/sites/$siteId/alerts/$alertId/acknowledge'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiSitesRoute: typeof ApiSitesRouteWithChildren
   ApiTestRoute: typeof ApiTestRouteWithChildren
+  ApiDashboardOverviewRoute: typeof ApiDashboardOverviewRoute
+  ApiDemoSimulateRoute: typeof ApiDemoSimulateRoute
+  ApiDevSimulatorRoute: typeof ApiDevSimulatorRouteWithChildren
+  ApiEventsStreamRoute: typeof ApiEventsStreamRoute
+  ApiDevicesDeviceIdSensorsHealthRoute: typeof ApiDevicesDeviceIdSensorsHealthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -102,12 +589,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/sites': {
+      id: '/api/sites'
+      path: '/api/sites'
+      fullPath: '/api/sites'
+      preLoaderRoute: typeof ApiSitesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/test': {
       id: '/api/test'
       path: '/api/test'
       fullPath: '/api/test'
       preLoaderRoute: typeof ApiTestRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/dashboard/overview': {
+      id: '/api/dashboard/overview'
+      path: '/api/dashboard/overview'
+      fullPath: '/api/dashboard/overview'
+      preLoaderRoute: typeof ApiDashboardOverviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/demo/simulate': {
+      id: '/api/demo/simulate'
+      path: '/api/demo/simulate'
+      fullPath: '/api/demo/simulate'
+      preLoaderRoute: typeof ApiDemoSimulateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dev/simulator': {
+      id: '/api/dev/simulator'
+      path: '/api/dev/simulator'
+      fullPath: '/api/dev/simulator'
+      preLoaderRoute: typeof ApiDevSimulatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/events/stream': {
+      id: '/api/events/stream'
+      path: '/api/events/stream'
+      fullPath: '/api/events/stream'
+      preLoaderRoute: typeof ApiEventsStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sites/$siteId': {
+      id: '/api/sites/$siteId'
+      path: '/$siteId'
+      fullPath: '/api/sites/$siteId'
+      preLoaderRoute: typeof ApiSitesSiteIdRouteImport
+      parentRoute: typeof ApiSitesRoute
     }
     '/api/test/auth': {
       id: '/api/test/auth'
@@ -116,8 +645,344 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTestAuthRouteImport
       parentRoute: typeof ApiTestRoute
     }
+    '/api/dev/simulator/calibration-required': {
+      id: '/api/dev/simulator/calibration-required'
+      path: '/calibration-required'
+      fullPath: '/api/dev/simulator/calibration-required'
+      preLoaderRoute: typeof ApiDevSimulatorCalibrationRequiredRouteImport
+      parentRoute: typeof ApiDevSimulatorRoute
+    }
+    '/api/dev/simulator/device-offline': {
+      id: '/api/dev/simulator/device-offline'
+      path: '/device-offline'
+      fullPath: '/api/dev/simulator/device-offline'
+      preLoaderRoute: typeof ApiDevSimulatorDeviceOfflineRouteImport
+      parentRoute: typeof ApiDevSimulatorRoute
+    }
+    '/api/dev/simulator/device-online': {
+      id: '/api/dev/simulator/device-online'
+      path: '/device-online'
+      fullPath: '/api/dev/simulator/device-online'
+      preLoaderRoute: typeof ApiDevSimulatorDeviceOnlineRouteImport
+      parentRoute: typeof ApiDevSimulatorRoute
+    }
+    '/api/dev/simulator/filter-warning': {
+      id: '/api/dev/simulator/filter-warning'
+      path: '/filter-warning'
+      fullPath: '/api/dev/simulator/filter-warning'
+      preLoaderRoute: typeof ApiDevSimulatorFilterWarningRouteImport
+      parentRoute: typeof ApiDevSimulatorRoute
+    }
+    '/api/dev/simulator/leak': {
+      id: '/api/dev/simulator/leak'
+      path: '/leak'
+      fullPath: '/api/dev/simulator/leak'
+      preLoaderRoute: typeof ApiDevSimulatorLeakRouteImport
+      parentRoute: typeof ApiDevSimulatorRoute
+    }
+    '/api/dev/simulator/normal': {
+      id: '/api/dev/simulator/normal'
+      path: '/normal'
+      fullPath: '/api/dev/simulator/normal'
+      preLoaderRoute: typeof ApiDevSimulatorNormalRouteImport
+      parentRoute: typeof ApiDevSimulatorRoute
+    }
+    '/api/dev/simulator/quality-failure': {
+      id: '/api/dev/simulator/quality-failure'
+      path: '/quality-failure'
+      fullPath: '/api/dev/simulator/quality-failure'
+      preLoaderRoute: typeof ApiDevSimulatorQualityFailureRouteImport
+      parentRoute: typeof ApiDevSimulatorRoute
+    }
+    '/api/dev/simulator/reset': {
+      id: '/api/dev/simulator/reset'
+      path: '/reset'
+      fullPath: '/api/dev/simulator/reset'
+      preLoaderRoute: typeof ApiDevSimulatorResetRouteImport
+      parentRoute: typeof ApiDevSimulatorRoute
+    }
+    '/api/dev/simulator/sensor-drift': {
+      id: '/api/dev/simulator/sensor-drift'
+      path: '/sensor-drift'
+      fullPath: '/api/dev/simulator/sensor-drift'
+      preLoaderRoute: typeof ApiDevSimulatorSensorDriftRouteImport
+      parentRoute: typeof ApiDevSimulatorRoute
+    }
+    '/api/sites/$siteId/alerts': {
+      id: '/api/sites/$siteId/alerts'
+      path: '/alerts'
+      fullPath: '/api/sites/$siteId/alerts'
+      preLoaderRoute: typeof ApiSitesSiteIdAlertsRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/calibration': {
+      id: '/api/sites/$siteId/calibration'
+      path: '/calibration'
+      fullPath: '/api/sites/$siteId/calibration'
+      preLoaderRoute: typeof ApiSitesSiteIdCalibrationRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/calibrations': {
+      id: '/api/sites/$siteId/calibrations'
+      path: '/calibrations'
+      fullPath: '/api/sites/$siteId/calibrations'
+      preLoaderRoute: typeof ApiSitesSiteIdCalibrationsRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/devices': {
+      id: '/api/sites/$siteId/devices'
+      path: '/devices'
+      fullPath: '/api/sites/$siteId/devices'
+      preLoaderRoute: typeof ApiSitesSiteIdDevicesRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/events': {
+      id: '/api/sites/$siteId/events'
+      path: '/events'
+      fullPath: '/api/sites/$siteId/events'
+      preLoaderRoute: typeof ApiSitesSiteIdEventsRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/leaks': {
+      id: '/api/sites/$siteId/leaks'
+      path: '/leaks'
+      fullPath: '/api/sites/$siteId/leaks'
+      preLoaderRoute: typeof ApiSitesSiteIdLeaksRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/maintenance': {
+      id: '/api/sites/$siteId/maintenance'
+      path: '/maintenance'
+      fullPath: '/api/sites/$siteId/maintenance'
+      preLoaderRoute: typeof ApiSitesSiteIdMaintenanceRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/purification': {
+      id: '/api/sites/$siteId/purification'
+      path: '/purification'
+      fullPath: '/api/sites/$siteId/purification'
+      preLoaderRoute: typeof ApiSitesSiteIdPurificationRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/quality': {
+      id: '/api/sites/$siteId/quality'
+      path: '/quality'
+      fullPath: '/api/sites/$siteId/quality'
+      preLoaderRoute: typeof ApiSitesSiteIdQualityRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/quality-gate': {
+      id: '/api/sites/$siteId/quality-gate'
+      path: '/quality-gate'
+      fullPath: '/api/sites/$siteId/quality-gate'
+      preLoaderRoute: typeof ApiSitesSiteIdQualityGateRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/telemetry': {
+      id: '/api/sites/$siteId/telemetry'
+      path: '/telemetry'
+      fullPath: '/api/sites/$siteId/telemetry'
+      preLoaderRoute: typeof ApiSitesSiteIdTelemetryRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/water-safety': {
+      id: '/api/sites/$siteId/water-safety'
+      path: '/water-safety'
+      fullPath: '/api/sites/$siteId/water-safety'
+      preLoaderRoute: typeof ApiSitesSiteIdWaterSafetyRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/devices/$deviceId/sensors/health': {
+      id: '/api/devices/$deviceId/sensors/health'
+      path: '/api/devices/$deviceId/sensors/health'
+      fullPath: '/api/devices/$deviceId/sensors/health'
+      preLoaderRoute: typeof ApiDevicesDeviceIdSensorsHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sites/$siteId/events/stream': {
+      id: '/api/sites/$siteId/events/stream'
+      path: '/stream'
+      fullPath: '/api/sites/$siteId/events/stream'
+      preLoaderRoute: typeof ApiSitesSiteIdEventsStreamRouteImport
+      parentRoute: typeof ApiSitesSiteIdEventsRoute
+    }
+    '/api/sites/$siteId/flow/current': {
+      id: '/api/sites/$siteId/flow/current'
+      path: '/flow/current'
+      fullPath: '/api/sites/$siteId/flow/current'
+      preLoaderRoute: typeof ApiSitesSiteIdFlowCurrentRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/flow/history': {
+      id: '/api/sites/$siteId/flow/history'
+      path: '/flow/history'
+      fullPath: '/api/sites/$siteId/flow/history'
+      preLoaderRoute: typeof ApiSitesSiteIdFlowHistoryRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/leaks/current': {
+      id: '/api/sites/$siteId/leaks/current'
+      path: '/current'
+      fullPath: '/api/sites/$siteId/leaks/current'
+      preLoaderRoute: typeof ApiSitesSiteIdLeaksCurrentRouteImport
+      parentRoute: typeof ApiSitesSiteIdLeaksRoute
+    }
+    '/api/sites/$siteId/maintenance/status': {
+      id: '/api/sites/$siteId/maintenance/status'
+      path: '/status'
+      fullPath: '/api/sites/$siteId/maintenance/status'
+      preLoaderRoute: typeof ApiSitesSiteIdMaintenanceStatusRouteImport
+      parentRoute: typeof ApiSitesSiteIdMaintenanceRoute
+    }
+    '/api/sites/$siteId/purification/status': {
+      id: '/api/sites/$siteId/purification/status'
+      path: '/status'
+      fullPath: '/api/sites/$siteId/purification/status'
+      preLoaderRoute: typeof ApiSitesSiteIdPurificationStatusRouteImport
+      parentRoute: typeof ApiSitesSiteIdPurificationRoute
+    }
+    '/api/sites/$siteId/water-quality/current': {
+      id: '/api/sites/$siteId/water-quality/current'
+      path: '/water-quality/current'
+      fullPath: '/api/sites/$siteId/water-quality/current'
+      preLoaderRoute: typeof ApiSitesSiteIdWaterQualityCurrentRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/water-quality/history': {
+      id: '/api/sites/$siteId/water-quality/history'
+      path: '/water-quality/history'
+      fullPath: '/api/sites/$siteId/water-quality/history'
+      preLoaderRoute: typeof ApiSitesSiteIdWaterQualityHistoryRouteImport
+      parentRoute: typeof ApiSitesSiteIdRoute
+    }
+    '/api/sites/$siteId/alerts/$alertId/acknowledge': {
+      id: '/api/sites/$siteId/alerts/$alertId/acknowledge'
+      path: '/$alertId/acknowledge'
+      fullPath: '/api/sites/$siteId/alerts/$alertId/acknowledge'
+      preLoaderRoute: typeof ApiSitesSiteIdAlertsAlertIdAcknowledgeRouteImport
+      parentRoute: typeof ApiSitesSiteIdAlertsRoute
+    }
   }
 }
+
+interface ApiSitesSiteIdAlertsRouteChildren {
+  ApiSitesSiteIdAlertsAlertIdAcknowledgeRoute: typeof ApiSitesSiteIdAlertsAlertIdAcknowledgeRoute
+}
+
+const ApiSitesSiteIdAlertsRouteChildren: ApiSitesSiteIdAlertsRouteChildren = {
+  ApiSitesSiteIdAlertsAlertIdAcknowledgeRoute:
+    ApiSitesSiteIdAlertsAlertIdAcknowledgeRoute,
+}
+
+const ApiSitesSiteIdAlertsRouteWithChildren =
+  ApiSitesSiteIdAlertsRoute._addFileChildren(ApiSitesSiteIdAlertsRouteChildren)
+
+interface ApiSitesSiteIdEventsRouteChildren {
+  ApiSitesSiteIdEventsStreamRoute: typeof ApiSitesSiteIdEventsStreamRoute
+}
+
+const ApiSitesSiteIdEventsRouteChildren: ApiSitesSiteIdEventsRouteChildren = {
+  ApiSitesSiteIdEventsStreamRoute: ApiSitesSiteIdEventsStreamRoute,
+}
+
+const ApiSitesSiteIdEventsRouteWithChildren =
+  ApiSitesSiteIdEventsRoute._addFileChildren(ApiSitesSiteIdEventsRouteChildren)
+
+interface ApiSitesSiteIdLeaksRouteChildren {
+  ApiSitesSiteIdLeaksCurrentRoute: typeof ApiSitesSiteIdLeaksCurrentRoute
+}
+
+const ApiSitesSiteIdLeaksRouteChildren: ApiSitesSiteIdLeaksRouteChildren = {
+  ApiSitesSiteIdLeaksCurrentRoute: ApiSitesSiteIdLeaksCurrentRoute,
+}
+
+const ApiSitesSiteIdLeaksRouteWithChildren =
+  ApiSitesSiteIdLeaksRoute._addFileChildren(ApiSitesSiteIdLeaksRouteChildren)
+
+interface ApiSitesSiteIdMaintenanceRouteChildren {
+  ApiSitesSiteIdMaintenanceStatusRoute: typeof ApiSitesSiteIdMaintenanceStatusRoute
+}
+
+const ApiSitesSiteIdMaintenanceRouteChildren: ApiSitesSiteIdMaintenanceRouteChildren =
+  {
+    ApiSitesSiteIdMaintenanceStatusRoute: ApiSitesSiteIdMaintenanceStatusRoute,
+  }
+
+const ApiSitesSiteIdMaintenanceRouteWithChildren =
+  ApiSitesSiteIdMaintenanceRoute._addFileChildren(
+    ApiSitesSiteIdMaintenanceRouteChildren,
+  )
+
+interface ApiSitesSiteIdPurificationRouteChildren {
+  ApiSitesSiteIdPurificationStatusRoute: typeof ApiSitesSiteIdPurificationStatusRoute
+}
+
+const ApiSitesSiteIdPurificationRouteChildren: ApiSitesSiteIdPurificationRouteChildren =
+  {
+    ApiSitesSiteIdPurificationStatusRoute:
+      ApiSitesSiteIdPurificationStatusRoute,
+  }
+
+const ApiSitesSiteIdPurificationRouteWithChildren =
+  ApiSitesSiteIdPurificationRoute._addFileChildren(
+    ApiSitesSiteIdPurificationRouteChildren,
+  )
+
+interface ApiSitesSiteIdRouteChildren {
+  ApiSitesSiteIdAlertsRoute: typeof ApiSitesSiteIdAlertsRouteWithChildren
+  ApiSitesSiteIdCalibrationRoute: typeof ApiSitesSiteIdCalibrationRoute
+  ApiSitesSiteIdCalibrationsRoute: typeof ApiSitesSiteIdCalibrationsRoute
+  ApiSitesSiteIdDevicesRoute: typeof ApiSitesSiteIdDevicesRoute
+  ApiSitesSiteIdEventsRoute: typeof ApiSitesSiteIdEventsRouteWithChildren
+  ApiSitesSiteIdLeaksRoute: typeof ApiSitesSiteIdLeaksRouteWithChildren
+  ApiSitesSiteIdMaintenanceRoute: typeof ApiSitesSiteIdMaintenanceRouteWithChildren
+  ApiSitesSiteIdPurificationRoute: typeof ApiSitesSiteIdPurificationRouteWithChildren
+  ApiSitesSiteIdQualityRoute: typeof ApiSitesSiteIdQualityRoute
+  ApiSitesSiteIdQualityGateRoute: typeof ApiSitesSiteIdQualityGateRoute
+  ApiSitesSiteIdTelemetryRoute: typeof ApiSitesSiteIdTelemetryRoute
+  ApiSitesSiteIdWaterSafetyRoute: typeof ApiSitesSiteIdWaterSafetyRoute
+  ApiSitesSiteIdFlowCurrentRoute: typeof ApiSitesSiteIdFlowCurrentRoute
+  ApiSitesSiteIdFlowHistoryRoute: typeof ApiSitesSiteIdFlowHistoryRoute
+  ApiSitesSiteIdWaterQualityCurrentRoute: typeof ApiSitesSiteIdWaterQualityCurrentRoute
+  ApiSitesSiteIdWaterQualityHistoryRoute: typeof ApiSitesSiteIdWaterQualityHistoryRoute
+}
+
+const ApiSitesSiteIdRouteChildren: ApiSitesSiteIdRouteChildren = {
+  ApiSitesSiteIdAlertsRoute: ApiSitesSiteIdAlertsRouteWithChildren,
+  ApiSitesSiteIdCalibrationRoute: ApiSitesSiteIdCalibrationRoute,
+  ApiSitesSiteIdCalibrationsRoute: ApiSitesSiteIdCalibrationsRoute,
+  ApiSitesSiteIdDevicesRoute: ApiSitesSiteIdDevicesRoute,
+  ApiSitesSiteIdEventsRoute: ApiSitesSiteIdEventsRouteWithChildren,
+  ApiSitesSiteIdLeaksRoute: ApiSitesSiteIdLeaksRouteWithChildren,
+  ApiSitesSiteIdMaintenanceRoute: ApiSitesSiteIdMaintenanceRouteWithChildren,
+  ApiSitesSiteIdPurificationRoute: ApiSitesSiteIdPurificationRouteWithChildren,
+  ApiSitesSiteIdQualityRoute: ApiSitesSiteIdQualityRoute,
+  ApiSitesSiteIdQualityGateRoute: ApiSitesSiteIdQualityGateRoute,
+  ApiSitesSiteIdTelemetryRoute: ApiSitesSiteIdTelemetryRoute,
+  ApiSitesSiteIdWaterSafetyRoute: ApiSitesSiteIdWaterSafetyRoute,
+  ApiSitesSiteIdFlowCurrentRoute: ApiSitesSiteIdFlowCurrentRoute,
+  ApiSitesSiteIdFlowHistoryRoute: ApiSitesSiteIdFlowHistoryRoute,
+  ApiSitesSiteIdWaterQualityCurrentRoute:
+    ApiSitesSiteIdWaterQualityCurrentRoute,
+  ApiSitesSiteIdWaterQualityHistoryRoute:
+    ApiSitesSiteIdWaterQualityHistoryRoute,
+}
+
+const ApiSitesSiteIdRouteWithChildren = ApiSitesSiteIdRoute._addFileChildren(
+  ApiSitesSiteIdRouteChildren,
+)
+
+interface ApiSitesRouteChildren {
+  ApiSitesSiteIdRoute: typeof ApiSitesSiteIdRouteWithChildren
+}
+
+const ApiSitesRouteChildren: ApiSitesRouteChildren = {
+  ApiSitesSiteIdRoute: ApiSitesSiteIdRouteWithChildren,
+}
+
+const ApiSitesRouteWithChildren = ApiSitesRoute._addFileChildren(
+  ApiSitesRouteChildren,
+)
 
 interface ApiTestRouteChildren {
   ApiTestAuthRoute: typeof ApiTestAuthRoute
@@ -130,11 +995,46 @@ const ApiTestRouteChildren: ApiTestRouteChildren = {
 const ApiTestRouteWithChildren =
   ApiTestRoute._addFileChildren(ApiTestRouteChildren)
 
+interface ApiDevSimulatorRouteChildren {
+  ApiDevSimulatorCalibrationRequiredRoute: typeof ApiDevSimulatorCalibrationRequiredRoute
+  ApiDevSimulatorDeviceOfflineRoute: typeof ApiDevSimulatorDeviceOfflineRoute
+  ApiDevSimulatorDeviceOnlineRoute: typeof ApiDevSimulatorDeviceOnlineRoute
+  ApiDevSimulatorFilterWarningRoute: typeof ApiDevSimulatorFilterWarningRoute
+  ApiDevSimulatorLeakRoute: typeof ApiDevSimulatorLeakRoute
+  ApiDevSimulatorNormalRoute: typeof ApiDevSimulatorNormalRoute
+  ApiDevSimulatorQualityFailureRoute: typeof ApiDevSimulatorQualityFailureRoute
+  ApiDevSimulatorResetRoute: typeof ApiDevSimulatorResetRoute
+  ApiDevSimulatorSensorDriftRoute: typeof ApiDevSimulatorSensorDriftRoute
+}
+
+const ApiDevSimulatorRouteChildren: ApiDevSimulatorRouteChildren = {
+  ApiDevSimulatorCalibrationRequiredRoute:
+    ApiDevSimulatorCalibrationRequiredRoute,
+  ApiDevSimulatorDeviceOfflineRoute: ApiDevSimulatorDeviceOfflineRoute,
+  ApiDevSimulatorDeviceOnlineRoute: ApiDevSimulatorDeviceOnlineRoute,
+  ApiDevSimulatorFilterWarningRoute: ApiDevSimulatorFilterWarningRoute,
+  ApiDevSimulatorLeakRoute: ApiDevSimulatorLeakRoute,
+  ApiDevSimulatorNormalRoute: ApiDevSimulatorNormalRoute,
+  ApiDevSimulatorQualityFailureRoute: ApiDevSimulatorQualityFailureRoute,
+  ApiDevSimulatorResetRoute: ApiDevSimulatorResetRoute,
+  ApiDevSimulatorSensorDriftRoute: ApiDevSimulatorSensorDriftRoute,
+}
+
+const ApiDevSimulatorRouteWithChildren = ApiDevSimulatorRoute._addFileChildren(
+  ApiDevSimulatorRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiSitesRoute: ApiSitesRouteWithChildren,
   ApiTestRoute: ApiTestRouteWithChildren,
+  ApiDashboardOverviewRoute: ApiDashboardOverviewRoute,
+  ApiDemoSimulateRoute: ApiDemoSimulateRoute,
+  ApiDevSimulatorRoute: ApiDevSimulatorRouteWithChildren,
+  ApiEventsStreamRoute: ApiEventsStreamRoute,
+  ApiDevicesDeviceIdSensorsHealthRoute: ApiDevicesDeviceIdSensorsHealthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

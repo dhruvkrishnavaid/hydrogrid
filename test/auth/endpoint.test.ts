@@ -18,7 +18,7 @@ describe("/api/test/auth Route Handler", () => {
     if (!handler) return;
 
     const request = new Request("http://localhost:3000/api/test/auth");
-    const response = (await handler({ request }));
+    const response = await handler({ request });
 
     expect(response.status).toBe(401);
     expect(response.headers.get("content-type")).toContain("application/json");
@@ -38,7 +38,7 @@ describe("/api/test/auth Route Handler", () => {
     const request = new Request("http://localhost:3000/api/test/auth", {
       headers: { Authorization: "Bearer invalid.jwt.signature" },
     });
-    const response = (await handler({ request }));
+    const response = await handler({ request });
 
     expect(response.status).toBe(401);
 

@@ -23,7 +23,8 @@ export interface GetAlertsOptions {
 export async function getAlerts(
   options?: GetAlertsOptions,
 ): Promise<Array<AlertRecord>> {
-  const supabase = getSupabaseServerClient() ?? getSupabaseAdminClient();
+  // Use admin client to bypass RLS — authorization enforced at the API layer
+  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase) {
     return [];
   }
@@ -57,7 +58,7 @@ export async function getAlerts(
 }
 
 export async function getAlertById(id: string): Promise<AlertRecord | null> {
-  const supabase = getSupabaseServerClient() ?? getSupabaseAdminClient();
+  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase) {
     return null;
   }

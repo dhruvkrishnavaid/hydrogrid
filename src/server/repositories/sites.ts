@@ -25,7 +25,8 @@ export interface UpdateSite {
 }
 
 export async function getSites(): Promise<Array<Site>> {
-  const supabase = getSupabaseServerClient() ?? getSupabaseAdminClient();
+  // Use admin client to bypass RLS — authorization is enforced at the API layer
+  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase) {
     return [];
   }
@@ -44,7 +45,8 @@ export async function getSites(): Promise<Array<Site>> {
 }
 
 export async function getSiteById(id: string): Promise<Site | null> {
-  const supabase = getSupabaseServerClient() ?? getSupabaseAdminClient();
+  // Use admin client to bypass RLS — authorization is enforced at the API layer
+  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase) {
     return null;
   }

@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiTestRouteImport } from './routes/api/test'
+import { Route as ApiTestAuthRouteImport } from './routes/api/test.auth'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -23,40 +25,58 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTestRoute = ApiTestRouteImport.update({
   id: '/api/test',
   path: '/api/test',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTestAuthRoute = ApiTestAuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => ApiTestRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/api/test': typeof ApiTestRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/test': typeof ApiTestRouteWithChildren
+  '/api/test/auth': typeof ApiTestAuthRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/api/test': typeof ApiTestRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/test': typeof ApiTestRouteWithChildren
+  '/api/test/auth': typeof ApiTestAuthRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/api/test': typeof ApiTestRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/test': typeof ApiTestRouteWithChildren
+  '/api/test/auth': typeof ApiTestAuthRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/api/test'
+  fullPaths: '/' | '/about' | '/api/health' | '/api/test' | '/api/test/auth'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/api/test'
-  id: '__root__' | '/' | '/about' | '/api/test'
+  to: '/' | '/about' | '/api/health' | '/api/test' | '/api/test/auth'
+  id:
+    '__root__' | '/' | '/about' | '/api/health' | '/api/test' | '/api/test/auth'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  ApiTestRoute: typeof ApiTestRoute
+  ApiHealthRoute: typeof ApiHealthRoute
+  ApiTestRoute: typeof ApiTestRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -75,6 +95,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/test': {
       id: '/api/test'
       path: '/api/test'
@@ -82,13 +109,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/test/auth': {
+      id: '/api/test/auth'
+      path: '/auth'
+      fullPath: '/api/test/auth'
+      preLoaderRoute: typeof ApiTestAuthRouteImport
+      parentRoute: typeof ApiTestRoute
+    }
   }
 }
+
+interface ApiTestRouteChildren {
+  ApiTestAuthRoute: typeof ApiTestAuthRoute
+}
+
+const ApiTestRouteChildren: ApiTestRouteChildren = {
+  ApiTestAuthRoute: ApiTestAuthRoute,
+}
+
+const ApiTestRouteWithChildren =
+  ApiTestRoute._addFileChildren(ApiTestRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  ApiTestRoute: ApiTestRoute,
+  ApiHealthRoute: ApiHealthRoute,
+  ApiTestRoute: ApiTestRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

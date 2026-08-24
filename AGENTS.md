@@ -1,27 +1,415 @@
-# HydroGrid AI Agent Directives (agents.md)
+# HydroGrid AI Agent Directives (AGENTS.md)
 
 ## 1. Project Context & Identity
 
 - **Project Name:** HydroGrid
-- **Core Stack:** TanStack Start (React), Vite, Tailwind CSS.
-- **Package Manager/Runtime:** Bun (Never use npm, pnpm, or equivalents)
-- **UI Library:** shadcn/ui.
-- **Architecture:** Full-stack React application where the `src/routes/api` directory handles backend server logic.
+- **Product:** Smart Water Purification and Quality Monitoring System
+- **Problem Statement:** PS 26040
+- **Core Stack:** TanStack Start, React, Vite, TypeScript, Tailwind CSS
+- **Package Manager/Runtime:** Bun
+- **UI Library:** shadcn/ui
+- **Architecture:** Full-stack TanStack Start single-server application
+- **Backend API:** TanStack Start API routes under `src/routes/api/`
+- **Authentication:** Supabase Auth
+- **Relational Database:** PostgreSQL via Supabase
+- **Time-Series Database:** InfluxDB
 
-## 2. Supreme Directives (CRITICAL)
+The physical ESP32/Raspberry Pi hardware is NOT implemented in this repository.
 
-1.  **DO NOT RUN THE BUILD COMMAND:** Never execute `bun run build`, or equivalent commands. You are only responsible for structuring the development environment and writing code.
-2.  **USE SUB-AGENTS/WORKFLOWS:** Divide tasks logically. If tasked with a full feature, spawn an internal workflow:
-    - _UI Agent:_ Scaffolds the Shadcn components and Tailwind styling.
-    - _API Agent:_ Scaffolds the TanStack server routes in `src/routes/api/`.
-    - _Integration Agent:_ Connects frontend data fetching to the API routes.
-3.  **ONLY FRONTEND & BACKEND STRUCTURE:** Focus strictly on the web application code. Do not attempt to write edge hardware C++/Python code in this repository.
+For the MVP, a backend simulator will act as the hardware/data source.
 
-## 3. Design System & Shadcn UI Configuration
+---
 
-We use a strict, custom color palette. Shadcn UI must be configured to map its CSS variables to these exact hex codes. Do not use default Shadcn slate/zinc colors.
+## 2. Documentation Is the Source of Truth
 
-**Color Palette:**
+Before implementing or modifying backend functionality, read:
+
+1. `docs/backend-mvp.md`
+2. `docs/backend-detailed.md`
+3. `docs/frontend-integration.md`
+
+These documents define the finalized HydroGrid MVP contract.
+
+### Documentation hierarchy
+
+`docs/backend-mvp.md`
+- Defines the frozen MVP scope
+- Defines required features
+- Defines demo workflow
+- Defines demo scenarios
+- Defines what is explicitly out of scope
+
+`docs/backend-detailed.md`
+- Defines detailed backend architecture
+- Defines backend implementation requirements
+- Defines domain behavior
+- Defines API/data contracts
+
+`docs/frontend-integration.md`
+- Defines what the frontend expects from the backend
+- Defines API integration requirements
+- Defines frontend-facing data contracts
+
+If documentation conflicts with existing implementation code, the documentation defines the intended system.
+
+Do not silently invent or change:
+- API routes
+- Water-quality parameters
+- Quality Gate rules
+- Safety Score rules
+- Event types
+- Alert types
+- Simulator behavior
+- Database responsibilities
+
+If a requirement is ambiguous or conflicting, stop and report the conflict before making an architectural decision.
+
+---
+
+## 3. Supreme Directives
+
+### 3.1 Never Run Build
+
+**DO NOT RUN `bun run build` or any equivalent build command.**
+
+Use development, type-checking, linting, and targeted runtime tests instead.
+
+### 3.2 Use Sub-Agents / Workflows
+
+When implementing a large feature, divide the work logically.
+
+Possible personas:
+- **UI Agent:** Frontend components and pages
+- **API Agent:** TanStack Start server routes
+- **Backend Infrastructure Agent:** Database, configuration, logging, validation
+- **Integration Agent:** Frontend/backend integration
+- **Testing Agent:** API and integration verification
+
+Do not create unnecessary sub-agents for trivial changes.
+
+### 3.3 Backend and Frontend Only
+
+This repository contains the web application.
+
+Do NOT implement:
+- ESP32 C++
+- Raspberry Pi hardware Python
+- LoRaWAN firmware
+- GPIO control software
+- Physical sensor drivers
+
+Hardware will eventually replace the simulator as the data source.
+
+---
+
+## 4. Architecture
+
+HydroGrid uses a **single-server TanStack Start architecture**.
+
+Do NOT create:
+- Express server
+- NestJS application
+- Separate backend repository
+- Separate HTTP server
+- Microservices
+
+The backend remains inside the existing TanStack Start application.
+
+### Backend structure
+
+Server API routes:
+```text
+src/routes/api/
+```
+
+Server-only infrastructure:
+```text
+src/server/
+```
+
+Shared schemas/types:
+```text
+src/lib/
+```
+
+Only place code in `src/lib/` when it genuinely needs to be shared between frontend and backend.
+
+---
+
+## 5. Backend Technology Rules
+
+### Runtime
+
+Use:
+```text
+Bun
+```
+
+Never use:
+```text
+npm
+pnpm
+yarn
+```
+
+### API
+
+Use TanStack Start API routes:
+```ts
+import { json } from "@tanstack/react-start";
+import { createAPIFileRoute } from "@tanstack/react-start/api";
+```
+
+Do NOT use Express-style route handlers.
+
+### Authentication
+
+Supabase Auth is the authentication provider.
+
+Do NOT implement custom:
+- JWT authentication
+- password authentication
+- session management
+- OAuth provider logic
+
+unless explicitly required by the finalized documentation.
+
+### Database
+
+Relational application data:
+```text
+Supabase PostgreSQL
+```
+
+Time-series telemetry:
+```text
+InfluxDB
+```
+
+Do NOT use SQLite as the application database.
+
+SQLite is NOT part of the finalized MVP architecture.
+
+### Validation
+
+Use:
+```text
+Zod
+```
+for request and configuration validation.
+
+---
+
+## 6. Final MVP Water Parameters
+
+The MVP uses exactly these parameters:
+
+- pH
+- Turbidity
+- Heavy Metals
+- Dissolved Oxygen
+- TDS
+- Electrical Conductivity
+- Temperature
+- Flow Rate
+- Hardness
+
+Do not introduce additional water-quality parameters without updating the finalized documentation first.
+
+### Electrical Conductivity
+
+Electrical Conductivity (EC) is an MVP supporting/observational parameter.
+
+EC:
+- Must be stored
+- Must be available to the frontend
+- Should be displayed alongside TDS
+- Can support trend/data-quality analysis
+
+EC must NOT independently cause a Quality Gate failure in the MVP.
+
+Do not invent an EC safety threshold.
+
+---
+
+## 7. Backend Responsibilities
+
+The backend MVP is responsible for:
+- Water-quality monitoring
+- Water Safety Score
+- Water Safety status
+- Quality Gate
+- Purification state
+- Flow monitoring
+- Leak detection
+- Device health
+- Sensor health
+- Calibration
+- Maintenance
+- Events
+- Alerts
+- Realtime updates
+- Hardware simulation
+
+The detailed behavior is defined in:
+```text
+docs/backend-detailed.md
+```
+
+---
+
+## 8. Simulator
+
+Because physical hardware is not connected during the MVP:
+
+```text
+Simulator
+    ↓
+Backend processing
+    ↓
+Database
+    ↓
+SSE
+    ↓
+Frontend
+```
+
+The simulator must behave as a temporary hardware/data source.
+
+It must support the scenarios defined in:
+```text
+docs/backend-mvp.md
+```
+
+The simulator is NOT throwaway code.
+
+When physical hardware becomes available:
+```text
+Simulator
+    ↓
+replaced by
+    ↓
+ESP32 / Edge Controller
+```
+
+The rest of the backend workflow should remain unchanged.
+
+---
+
+## 9. API Route Rules
+
+All backend API routes belong under:
+```text
+src/routes/api/
+```
+
+Use:
+```ts
+createAPIFileRoute(...)
+```
+
+Do not create duplicate API mechanisms.
+
+Before creating a new route:
+1. Check `docs/backend-detailed.md`
+2. Check existing API routes
+3. Confirm that the route belongs to the frozen MVP
+4. Follow the documented request/response contract
+
+Do not invent routes for convenience.
+
+---
+
+## 10. API Response and Error Handling
+
+All APIs must use consistent response structures.
+
+Errors must be:
+- predictable
+- machine-readable
+- safe for frontend consumption
+- free of secrets or internal credentials
+
+Do not expose:
+- API keys
+- database credentials
+- Supabase secrets
+- internal stack traces
+- environment variables
+
+---
+
+## 11. Environment Variables
+
+Never hardcode secrets.
+
+Use environment variables for:
+- Supabase configuration
+- PostgreSQL configuration where required
+- InfluxDB configuration
+- Other external service credentials
+
+Maintain:
+```text
+.env.example
+```
+
+with variable names only.
+
+Never commit real credentials.
+
+---
+
+## 12. Logging
+
+Backend logging must be structured and useful for debugging.
+
+Do not log:
+- passwords
+- access tokens
+- API keys
+- database credentials
+- sensitive user information
+
+Prefer meaningful events such as:
+```text
+API request
+Telemetry ingestion
+Quality Gate evaluation
+Leak detection
+Simulator scenario change
+Database failure
+External service failure
+```
+
+---
+
+## 13. UI / UX Rules
+
+HydroGrid uses:
+```text
+shadcn/ui
+Tailwind CSS
+TanStack Router
+```
+
+Keep components under:
+```text
+src/components/
+```
+
+Keep routes under:
+```text
+src/routes/
+```
+
+Do not redesign existing frontend components unless explicitly requested.
+
+---
+
+## 14. Design System
+
+Use the project's established custom palette.
 
 - White Chalk: `#f6f4f1`
 - Radiant Dawn: `#ece2ce`
@@ -30,102 +418,114 @@ We use a strict, custom color palette. Shadcn UI must be configured to map its C
 - Kyuri Green: `#4b5d16`
 - Blind Forest: `#223300`
 
-## 4. Workflows & Sub-Agent Personas
+Do not introduce default Shadcn slate/zinc colors.
 
-When executing a prompt, adopt the following personas in sequence:
+Do not hardcode colors when existing CSS variables should be used.
 
-### Persona A: The UI/UX Architect (Frontend)
+---
 
-- **Role:** Implements Shadcn components and pages.
-- **Rules:**
-- Install Shadcn components via terminal commands (e.g., `bunx --bun shadcn-ui@latest add button`).
-- Keep components in `src/components/`.
-- Use TanStack Router for client-side navigation (`src/routes/`).
+## 15. Naming
 
-### Persona B: The Backend API Engineer (Backend)
-
-- **Role:** Handles server-side logic in TanStack Start.
-- **Rules:**
-- All files in `src/routes/api/` are server-only routes.
-- Use `createAPIFileRoute` from `@tanstack/react-start/api`.
-- Handle telemetry ingestion and database interactions (InfluxDB/SQLite) here.
-
-## 5. Code Samples & Architecture
-
-### A. TanStack Start API Route Setup
-
-TanStack Start uses specific syntax for API routes. Do not use standard Express/Next.js syntax.
-
-**File:** `src/routes/api/test.tsx`
-
-```tsx
-import { json } from "@tanstack/react-start";
-import { createAPIFileRoute } from "@tanstack/react-start/api";
-
-// Define the API route for HydroGrid telemetry testing
-export const APIRoute = createAPIFileRoute("/api/test")({
-  GET: async ({ request }) => {
-    // Example: Fetching system status
-    return json({
-      system: "HydroGrid",
-      status: "Online",
-      sensors: {
-        pH: 7.2,
-        tds: 150,
-      },
-    });
-  },
-  POST: async ({ request }) => {
-    // Example: Ingesting sensor payload
-    const body = await request.json();
-    console.log("HydroGrid Telemetry Received:", body);
-
-    return json({ success: true, timestamp: new Date().toISOString() });
-  },
-});
+The project is named:
+```text
+HydroGrid
 ```
 
-### B. Shadcn Component Usage (Client Route)
+Do not use:
+```text
+JalRakshak
+```
+in application code, UI, API responses, or documentation unless explicitly required by the finalized documentation.
 
-**File:** `src/routes/index.tsx`
+---
 
-```tsx
-import { createFileRoute } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
+## 16. Implementation Workflow
 
-export const Route = createFileRoute("/")({
-  component: Dashboard,
-});
+Before modifying code:
 
-function Dashboard() {
-  return (
-    <div className="p-8 space-y-6">
-      <h1 className="text-3xl font-bold text-foreground">
-        HydroGrid Control Center
-      </h1>
-      <div className="flex gap-4">
-        {/* Uses Kyuri Green due to CSS variables */}
-        <Button variant="default">Acknowledge Alert</Button>
-        {/* Uses Tobiko Orange due to CSS variables */}
-        <Button variant="destructive">Trigger Shutoff Valve</Button>
-        {/* Uses Radiant Dawn due to CSS variables */}
-        <Button variant="secondary">View Logs</Button>
-      </div>
-    </div>
-  );
-}
+1. Read `AGENTS.md`
+2. Read the relevant documentation under `docs/`
+3. Inspect the existing implementation
+4. Identify the minimum required files
+5. Implement the requested milestone
+6. Run formatting/checking
+7. Run linting
+8. Run targeted tests
+9. Run the development server when required
+10. Test the affected API/feature
+11. Fix actual failures
+12. Re-run validation
+13. Report exactly what changed
+
+Never claim something works without actually validating it.
+
+---
+
+## 17. Do Not Over-Engineer
+
+Avoid premature:
+- microservices
+- repository abstractions
+- event buses
+- complex dependency injection
+- unnecessary interfaces
+- speculative modules
+- unused infrastructure
+- duplicate data models
+- unnecessary dependencies
+
+Prefer the simplest architecture that satisfies the frozen MVP contract.
+
+---
+
+## 18. Milestone Discipline
+
+Do NOT implement the entire backend in one step.
+
+Implement backend milestones incrementally.
+
+Each milestone must:
+1. Have a clearly defined scope
+2. Modify only necessary files
+3. Be validated independently
+4. Leave the repository in a working state
+5. Stop before automatically starting the next milestone
+
+Do not expand scope without explicit instruction.
+
+---
+
+## 19. Build Restriction
+
+Never run:
+```bash
+bun run build
+```
+or any equivalent production build command.
+
+Allowed validation includes:
+```bash
+bun run check
+bun run lint
 ```
 
-## 6. Required MCPs (Model Context Protocol)
+and appropriate development/runtime API testing.
 
-If applicable, the agent should utilize:
+---
 
-- **Filesystem MCP:** To read/write React components and routes.
-- **Terminal/Command Execution MCP:** To run `bunx --bun shadcn-ui@latest add [component]` or `bun add [dependency]`. (Remember: NEVER run `build`).
+## 20. Final Verification Checklist
 
-## 7. Execution Checklist for the Agent
+Before completing a task, verify:
 
-1. **Understand Request:** Identify if the user wants UI, API, or both.
-2. **Invoke Sub-agents:** State your plan (e.g., "I will first use the UI Architect to create the Shadcn Card, then the API Engineer to create `/api/telemetry.tsx`").
-3. **Execute:** Write the files.
-4. **Verify:** Check that no default colors are hardcoded, and the name "JalRakshak" does not appear.
+- No build command was executed
+- Bun was used
+- Documentation was followed
+- No undocumented API routes were introduced
+- No undocumented water parameters were introduced
+- No custom authentication was introduced
+- No SQLite application database was introduced
+- No hardware code was introduced
+- No secrets were committed
+- Existing frontend behavior was not unnecessarily broken
+- Relevant validation was executed
+- Actual runtime behavior was tested where applicable

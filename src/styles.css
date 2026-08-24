@@ -10,6 +10,12 @@
 
 @theme {
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --color-white-chalk: #f6f4f1;
+  --color-radiant-dawn: #ece2ce;
+  --color-sneezeweeds: #f2b635;
+  --color-tobiko-orange: #e45c10;
+  --color-kyuri-green: #4b5d16;
+  --color-blind-forest: #223300;
 }
 
 :root {

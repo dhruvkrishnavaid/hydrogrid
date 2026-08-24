@@ -9,16 +9,18 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        default: "bg-kyuri-green text-white hover:bg-kyuri-green/90 active:bg-blind-forest focus-visible:ring-2 focus-visible:ring-kyuri-green/50",
         outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:bg-transparent dark:hover:bg-input/30",
+          "border-2 border-kyuri-green text-kyuri-green bg-transparent hover:bg-kyuri-green/10",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "bg-radiant-dawn text-blind-forest hover:bg-radiant-dawn/80",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "hover:bg-radiant-dawn/60 text-blind-forest",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-tobiko-orange text-white hover:bg-tobiko-orange/90",
+        accent:
+          "bg-sneezeweeds text-blind-forest hover:bg-sneezeweeds/90 font-semibold",
+        link: "text-kyuri-green underline-offset-4 hover:underline",
       },
       size: {
         default:

@@ -8,13 +8,18 @@ import { defineConfig } from "vite";
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  oxc: {
+    jsx: {
+      development: false,
+    },
+  },
   plugins: [
+    babel({ presets: [reactCompilerPreset()] }),
     devtools(),
     nitro({ rollupConfig: { external: [/^@sentry\//] } }),
     tailwindcss(),
     tanstackStart(),
     viteReact(),
-    babel({ presets: [reactCompilerPreset()] }),
   ],
 });
 

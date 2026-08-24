@@ -55,9 +55,7 @@ export function sanitizeHistoryParams(options?: HistoryQueryOptions): {
   const now = new Date();
   const defaultFrom = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-  const fromIso = options?.from
-    ? options.from
-    : defaultFrom.toISOString();
+  const fromIso = options?.from ? options.from : defaultFrom.toISOString();
 
   const toIso = options?.to ? options.to : now.toISOString();
 
@@ -149,9 +147,9 @@ export async function getWaterQualityHistory(
     return { data: [] };
   }
 
-  const numericFields = WATER_QUALITY_NUMERIC_FIELDS
-    .map((field) => `"${field}"`)
-    .join(", ");
+  const numericFields = WATER_QUALITY_NUMERIC_FIELDS.map(
+    (field) => `"${field}"`,
+  ).join(", ");
 
   const fluxQuery = `
     from(bucket: "${serverConfig.INFLUXDB_BUCKET}")
@@ -177,22 +175,16 @@ export async function getWaterQualityHistory(
   `;
 
   try {
-    const rows = await queryApi.collectRows<Record<string, unknown>>(
-      fluxQuery,
-    );
+    const rows = await queryApi.collectRows<Record<string, unknown>>(fluxQuery);
 
     const points: Array<WaterQualityHistoryPoint> = rows.map((row) => ({
-      timestamp: String(
-        row._time ?? new Date().toISOString(),
-      ),
+      timestamp: String(row._time ?? new Date().toISOString()),
       ph: Number(row.ph ?? 7.0),
       turbidity: Number(row.turbidity ?? 1.0),
       heavyMetals: Number(row.heavyMetals ?? 0.0),
       dissolvedOxygen: Number(row.dissolvedOxygen ?? 7.0),
       tds: Number(row.tds ?? 200.0),
-      electricalConductivity: Number(
-        row.electricalConductivity ?? 300.0,
-      ),
+      electricalConductivity: Number(row.electricalConductivity ?? 300.0),
       temperature: Number(row.temperature ?? 24.0),
       flowRate: Number(row.flowRate ?? 45.0),
       hardness: Number(row.hardness ?? 140.0),
@@ -200,10 +192,7 @@ export async function getWaterQualityHistory(
 
     return { data: points };
   } catch (err) {
-    console.warn(
-      "InfluxDB historical water quality query failed:",
-      err,
-    );
+    console.warn("InfluxDB historical water quality query failed:", err);
 
     return { data: [] };
   }
@@ -237,9 +226,9 @@ export async function getFlowHistory(
     return { data: [] };
   }
 
-  const numericFields = FLOW_NUMERIC_FIELDS
-    .map((field) => `"${field}"`)
-    .join(", ");
+  const numericFields = FLOW_NUMERIC_FIELDS.map((field) => `"${field}"`).join(
+    ", ",
+  );
 
   const fluxQuery = `
     from(bucket: "${serverConfig.INFLUXDB_BUCKET}")
@@ -265,30 +254,22 @@ export async function getFlowHistory(
   `;
 
   try {
-    const rows = await queryApi.collectRows<Record<string, unknown>>(
-      fluxQuery,
-    );
+    const rows = await queryApi.collectRows<Record<string, unknown>>(fluxQuery);
 
     const points: Array<FlowHistoryPoint> = rows.map((row) => {
       const flowRate = Number(row.flowRate ?? 45.0);
 
       return {
-        timestamp: String(
-          row._time ?? new Date().toISOString(),
-        ),
+        timestamp: String(row._time ?? new Date().toISOString()),
         inletFlowRate: 45.0,
         outletFlowRate: flowRate,
-        differencePercent:
-          Math.abs(((45.0 - flowRate) / 45.0) * 100),
+        differencePercent: Math.abs(((45.0 - flowRate) / 45.0) * 100),
       };
     });
 
     return { data: points };
   } catch (err) {
-    console.warn(
-      "InfluxDB historical flow query failed:",
-      err,
-    );
+    console.warn("InfluxDB historical flow query failed:", err);
 
     return { data: [] };
   }

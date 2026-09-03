@@ -18,7 +18,6 @@ import {
 
 import { FlowDifferentialChart } from "../components/charts/FlowDifferentialChart";
 import { FlowTelemetryDualChart } from "../components/charts/FlowTelemetryDualChart";
-import { NoStationSelected } from "../components/NoStationSelected";
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth-context";
 import type { FlowHistoryPoint } from "../lib/types";
@@ -37,29 +36,19 @@ interface FlowCurrentData {
 }
 
 function FlowPage() {
-  const {
-    activeSiteId,
-    isStationEntered,
-    isLoading: isAuthLoading,
-  } = useAuth();
+  const { activeSiteId } = useAuth();
   const [flowCurrent, setFlowCurrent] = useState<FlowCurrentData | null>(null);
   const [history, setHistory] = useState<Array<FlowHistoryPoint>>([]);
   const [interval, setInterval] = useState<string>("5m");
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    if (!activeSiteId || !isStationEntered) {
-      if (!isAuthLoading) {
-        setIsLoading(false);
-      }
-      return;
-    }
-
+    const siteId = activeSiteId ?? "00000000-0000-0000-0000-000000000001";
     setIsLoading(true);
 
     Promise.all([
-      api.getFlowCurrent(activeSiteId),
-      api.getFlowHistory(activeSiteId, { interval }),
+      api.getFlowCurrent(siteId),
+      api.getFlowHistory(siteId, { interval }),
     ])
       .then(([curr, hist]) => {
         setFlowCurrent({
@@ -75,11 +64,26 @@ function FlowPage() {
       })
       .catch(() => {})
       .finally(() => setIsLoading(false));
-  }, [activeSiteId, interval, isAuthLoading, isStationEntered]);
 
-  if (!isStationEntered || !activeSiteId) {
-    return <NoStationSelected title="Hydraulic Flow & Leak Protection" />;
-  }
+    const pollId = window.setInterval(() => {
+      api
+        .getFlowCurrent(siteId)
+        .then((curr) => {
+          setFlowCurrent({
+            inlet: curr.inlet ?? 45.0,
+            outlet: curr.outlet ?? curr.outletFlowRate ?? 45.0,
+            differencePercent:
+              curr.differencePercent ?? curr.mismatchPercent ?? 0.0,
+            thresholdPercent: curr.thresholdPercent ?? 15.0,
+            status: curr.leakStatus ?? "NORMAL",
+            isolationValve: curr.isolationValve ?? curr.valveStatus ?? "OPEN",
+          });
+        })
+        .catch(() => {});
+    }, 3000);
+
+    return () => window.clearInterval(pollId);
+  }, [activeSiteId, interval]);
 
   const isLeak =
     flowCurrent?.status === "LEAK_DETECTED" ||

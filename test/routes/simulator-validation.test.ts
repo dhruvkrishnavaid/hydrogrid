@@ -23,6 +23,12 @@ describe("Strict Simulator Scenario Validation", () => {
     expect(normalizeScenario("quality-failure")).toBe("UNSAFE_HEAVY_METALS");
     expect(normalizeScenario("LEAK")).toBe("LEAK_DETECTED");
     expect(normalizeScenario("leak")).toBe("LEAK_DETECTED");
+    expect(normalizeScenario("TURBIDITY_SPILL")).toBe("UNSAFE_TURBIDITY");
+    expect(normalizeScenario("turbidity-spill")).toBe("UNSAFE_TURBIDITY");
+    expect(normalizeScenario("THERMAL_ANOMALY")).toBe("UNSAFE_TEMPERATURE");
+    expect(normalizeScenario("thermal-anomaly")).toBe("UNSAFE_TEMPERATURE");
+    expect(normalizeScenario("TURBIDITY_DRIFT")).toBe("SENSOR_DRIFT");
+    expect(normalizeScenario("turbidity-drift")).toBe("SENSOR_DRIFT");
   });
 
   it("rejects unknown scenario names and returns null", () => {

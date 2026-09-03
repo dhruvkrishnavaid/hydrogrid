@@ -30,7 +30,7 @@ interface PurificationTrajectoryChartProps {
 }
 
 export function PurificationTrajectoryChart({
-  status,
+  status: _status,
   className,
 }: PurificationTrajectoryChartProps) {
   const chartConfig = {

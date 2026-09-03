@@ -23,9 +23,9 @@ import {
 
 import { WaterQualityChannelChart } from "../components/charts/WaterQualityChannelChart";
 import { WaterQualityRadarChart } from "../components/charts/WaterQualityRadarChart";
-import { NoStationSelected } from "../components/NoStationSelected";
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth-context";
+import { FEATURES, isSensorKeyEnabled } from "../lib/feature-flags";
 import type {
   WaterQualityHistoryPoint,
   WaterQualityReading,
@@ -36,32 +36,23 @@ export const Route = createFileRoute("/water-quality")({
 });
 
 function WaterQualityPage() {
-  const {
-    activeSiteId,
-    isStationEntered,
-    isLoading: isAuthLoading,
-  } = useAuth();
+  const { activeSiteId } = useAuth();
   const [currentReading, setCurrentReading] =
     useState<WaterQualityReading | null>(null);
   const [history, setHistory] = useState<Array<WaterQualityHistoryPoint>>([]);
-  const [selectedParam, setSelectedParam] =
-    useState<keyof WaterQualityReading>("ph");
+  const [selectedParam, setSelectedParam] = useState<keyof WaterQualityReading>(
+    FEATURES.ALL_SENSORS ? "ph" : "turbidity",
+  );
   const [interval, setInterval] = useState<string>("5m");
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    if (!activeSiteId || !isStationEntered) {
-      if (!isAuthLoading) {
-        setIsLoading(false);
-      }
-      return;
-    }
-
+    const siteId = activeSiteId ?? "00000000-0000-0000-0000-000000000001";
     setIsLoading(true);
 
     Promise.all([
-      api.getWaterQualityCurrent(activeSiteId),
-      api.getWaterQualityHistory(activeSiteId, { interval }),
+      api.getWaterQualityCurrent(siteId),
+      api.getWaterQualityHistory(siteId, { interval }),
     ])
       .then(([curr, hist]) => {
         setCurrentReading(curr.reading);
@@ -69,11 +60,18 @@ function WaterQualityPage() {
       })
       .catch(() => {})
       .finally(() => setIsLoading(false));
-  }, [activeSiteId, interval, isAuthLoading, isStationEntered]);
 
-  if (!isStationEntered || !activeSiteId) {
-    return <NoStationSelected title="Water Quality Diagnostics" />;
-  }
+    const pollId = window.setInterval(() => {
+      api
+        .getWaterQualityCurrent(siteId)
+        .then((curr) => {
+          setCurrentReading(curr.reading);
+        })
+        .catch(() => {});
+    }, 3000);
+
+    return () => window.clearInterval(pollId);
+  }, [activeSiteId, interval]);
 
   const paramConfig: Record<
     keyof WaterQualityReading,
@@ -163,6 +161,10 @@ function WaterQualityPage() {
     },
   };
 
+  const activeParamKeys = (
+    Object.keys(paramConfig) as Array<keyof WaterQualityReading>
+  ).filter((key) => isSensorKeyEnabled(key));
+
   const selectedMeta = paramConfig[selectedParam];
   const selectedValue = currentReading ? currentReading[selectedParam] : null;
   const isSelectedOutOfRange =
@@ -212,19 +214,17 @@ function WaterQualityPage() {
             <span className="text-muted-foreground mr-2 text-xs font-bold tracking-wider uppercase">
               Channels:
             </span>
-            {(Object.keys(paramConfig) as Array<keyof WaterQualityReading>).map(
-              (key) => (
-                <Button
-                  key={key}
-                  variant={selectedParam === key ? "default" : "ghost"}
-                  size="xs"
-                  onClick={() => setSelectedParam(key)}
-                  className="h-7 text-xs font-semibold"
-                >
-                  {paramConfig[key].label}
-                </Button>
-              ),
-            )}
+            {activeParamKeys.map((key) => (
+              <Button
+                key={key}
+                variant={selectedParam === key ? "default" : "ghost"}
+                size="xs"
+                onClick={() => setSelectedParam(key)}
+                className="h-7 text-xs font-semibold"
+              >
+                {paramConfig[key].label}
+              </Button>
+            ))}
           </div>
         </CardHeader>
 
@@ -300,8 +300,13 @@ function WaterQualityPage() {
         </CardContent>
       </Card>
 
-      {/* 1.5 Multi-Parameter Potability Compliance Radar */}
-      <WaterQualityRadarChart reading={currentReading} className="shadow-2xs" />
+      {/* 1.5 Multi-Parameter Potability Compliance Radar (Full Sensor Suite) */}
+      {FEATURES.ALL_SENSORS && (
+        <WaterQualityRadarChart
+          reading={currentReading}
+          className="shadow-2xs"
+        />
+      )}
 
       {/* 2. Comprehensive Regulatory Compliance Registry */}
       <Card className="shadow-2xs">
@@ -309,11 +314,14 @@ function WaterQualityPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-foreground text-sm font-bold">
-                Comprehensive Potability Compliance Registry (9 Channels)
+                {FEATURES.ALL_SENSORS
+                  ? "Comprehensive Potability Compliance Registry (9 Channels)"
+                  : "Active Prototype Sensor Registry (Node Zero)"}
               </CardTitle>
               <CardDescription className="text-xs">
-                Verified continuously against World Health Organization & Indian
-                Standard IS 10500:2012
+                {FEATURES.ALL_SENSORS
+                  ? "Verified continuously against World Health Organization & Indian Standard IS 10500:2012"
+                  : "Calibrated physical sensor telemetry active on prototype node at IIIT-Delhi"}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -321,7 +329,7 @@ function WaterQualityPage() {
                 Click any row to inspect historical trend
               </span>
               <Badge variant="outline" className="text-xs font-semibold">
-                9/9 Active Probes
+                {activeParamKeys.length}/{activeParamKeys.length} Active Probes
               </Badge>
             </div>
           </div>
@@ -339,9 +347,7 @@ function WaterQualityPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(
-                Object.keys(paramConfig) as Array<keyof WaterQualityReading>
-              ).map((key) => {
+              {activeParamKeys.map((key) => {
                 const cfg = paramConfig[key];
                 const val = currentReading ? currentReading[key] : null;
                 const isViolation =

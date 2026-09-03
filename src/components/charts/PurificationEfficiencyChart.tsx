@@ -41,8 +41,10 @@ export function PurificationEfficiencyChart({
     },
   } satisfies ChartConfig;
 
-  // Real-time stage removal efficiencies with dynamic fallback from status
-  const filterHealth = status?.filterHealth ?? 94;
+  const filterHealth =
+    status?.filters?.sediment?.lifePercent ??
+    (status as any)?.filterHealth ??
+    94;
 
   const data = [
     {

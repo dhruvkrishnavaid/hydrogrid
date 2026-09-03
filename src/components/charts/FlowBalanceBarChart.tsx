@@ -47,8 +47,9 @@ export function FlowBalanceBarChart({
   history = [],
   className,
 }: FlowBalanceBarChartProps) {
-  const currentDiff = flow?.differencePercent ?? 0.0;
-  const isLeak = (flow?.leakDetected ?? false) || currentDiff >= 15.0;
+  const currentDiff =
+    flow?.mismatchPercent ?? (flow as any)?.differencePercent ?? 0.0;
+  const isLeak = flow?.leakStatus === "LEAK_DETECTED" || currentDiff >= 15.0;
 
   // Prepare recent comparison samples
   const chartData = React.useMemo(() => {
@@ -234,12 +235,12 @@ export function FlowBalanceBarChart({
             </span>
             <span
               className={`text-xs font-extrabold ${
-                (flow?.isolationValveStatus ?? "OPEN") === "OPEN"
+                (flow?.valveStatus ?? "OPEN") === "OPEN"
                   ? "text-emerald-600 dark:text-emerald-400"
                   : "text-amber-600 dark:text-amber-400"
               }`}
             >
-              {flow?.isolationValveStatus ?? "OPEN"}
+              {flow?.valveStatus ?? "OPEN"}
             </span>
           </div>
         </div>

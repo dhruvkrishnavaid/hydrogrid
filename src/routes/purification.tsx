@@ -8,11 +8,12 @@ import {
   IconLoader2,
   IconSun,
 } from "@tabler/icons-react";
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -21,12 +22,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 import { PurificationEfficiencyChart } from "../components/charts/PurificationEfficiencyChart";
 import { PurificationTrajectoryChart } from "../components/charts/PurificationTrajectoryChart";
-import { NoStationSelected } from "../components/NoStationSelected";
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth-context";
+import { FEATURES } from "../lib/feature-flags";
 import type { PurificationStatus } from "../lib/types";
 
 export const Route = createFileRoute("/purification")({
@@ -34,11 +36,7 @@ export const Route = createFileRoute("/purification")({
 });
 
 function PurificationPage() {
-  const {
-    activeSiteId,
-    isStationEntered,
-    isLoading: isAuthLoading,
-  } = useAuth();
+  const { activeSiteId } = useAuth();
   const [status, setStatus] = useState<PurificationStatus | null>(null);
   const [activeStageKey, setActiveStageKey] = useState<
     "sediment" | "carbon" | "calcite" | "uv"
@@ -46,23 +44,83 @@ function PurificationPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    if (!activeSiteId || !isStationEntered) {
-      if (!isAuthLoading) {
-        setIsLoading(false);
-      }
-      return;
-    }
-
+    const siteId = activeSiteId ?? "00000000-0000-0000-0000-000000000001";
     setIsLoading(true);
     api
-      .getPurificationStatus(activeSiteId)
+      .getPurificationStatus(siteId)
       .then(setStatus)
       .catch(() => {})
       .finally(() => setIsLoading(false));
-  }, [activeSiteId, isAuthLoading, isStationEntered]);
+  }, [activeSiteId]);
 
-  if (!isStationEntered || !activeSiteId) {
-    return <NoStationSelected title="Purification Pipeline" />;
+  if (!FEATURES.PURIFICATION) {
+    return (
+      <main className="mx-auto max-w-4xl space-y-6 p-4 sm:p-8">
+        <Card className="border-border/80 shadow-2xs">
+          <CardHeader className="p-8 pb-4 text-center">
+            <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <IconFilter className="size-6" />
+            </div>
+            <CardTitle className="text-foreground text-lg font-bold">
+              Purification Module Inactive (Node Zero Prototype)
+            </CardTitle>
+            <CardDescription className="mx-auto max-w-lg text-xs leading-relaxed">
+              The current physical hardware deployment is{" "}
+              <strong>Node Zero</strong> located at{" "}
+              <strong>IIIT-Delhi (IIITD)</strong>. This single-node edge unit is
+              equipped with real-time Turbidity, Temperature, and Flow Rate
+              sensors with automated emergency solenoid shutoff, but does not
+              house physical 4-stage treatment media beds.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center gap-4 p-8 pt-0 text-xs">
+            <div className="border-border/80 bg-muted/40 text-muted-foreground w-full max-w-md space-y-2 rounded-xl border p-4 text-left">
+              <span className="text-foreground block text-[11px] font-bold uppercase">
+                Hardware Profile Flags:
+              </span>
+              <div className="flex items-center justify-between">
+                <span>Purification Module:</span>
+                <Badge variant="outline" className="font-mono text-[10px]">
+                  VITE_ENABLE_PURIFICATION=false
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Active Prototype Node:</span>
+                <span className="text-foreground font-semibold">
+                  Node Zero (IIITD)
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Active Sensory Channels:</span>
+                <span className="text-foreground font-semibold">
+                  Turbidity, Temp, Flow Rate
+                </span>
+              </div>
+            </div>
+            <div className="mt-2 flex items-center gap-3">
+              <Link
+                to="/"
+                className={cn(
+                  buttonVariants({ variant: "default", size: "sm" }),
+                  "text-xs font-bold",
+                )}
+              >
+                Return to Dashboard
+              </Link>
+              <Link
+                to="/water-quality"
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "text-xs font-bold",
+                )}
+              >
+                View Water Quality
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    );
   }
 
   const stagesMeta = [

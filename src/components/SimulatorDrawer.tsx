@@ -2,7 +2,9 @@ import {
   IconAlertTriangle,
   IconBolt,
   IconCheck,
+  IconChevronDown,
   IconDroplet,
+  IconFlame,
   IconLoader2,
   IconRotate2,
   IconTool,
@@ -28,6 +30,7 @@ import { cn } from "@/lib/utils";
 
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth-context";
+import { FEATURES } from "../lib/feature-flags";
 
 export const SimulatorDrawer: React.FC = () => {
   const { activeSiteId, role } = useAuth();
@@ -49,7 +52,7 @@ export const SimulatorDrawer: React.FC = () => {
         scenario,
       });
       setLastResult(
-        `✓ [${scenario}] Score: ${res.safety.score} | Gate: ${res.safety.qualityGate} | Release: ${res.safety.waterRelease}`,
+        `✓ [${scenario}] Score: ${res.safety.score} | Gate: ${res.safety.qualityGate} | Valve: ${res.flow.valveStatus}`,
       );
     } catch (err: unknown) {
       setIsError(true);
@@ -93,9 +96,15 @@ export const SimulatorDrawer: React.FC = () => {
               </SheetTitle>
             </div>
             <SheetDescription className="text-muted-foreground text-xs">
-              Simulate hardware sensors, pipeline breaches, and water
-              contamination events for live evaluation.
+              Inject deterministic fault scenarios into Node Zero edge logic and
+              observe real-time automated actuator and gatekeeper responses.
             </SheetDescription>
+            <div className="mt-2 flex items-center justify-between rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">
+              <span>Node Zero — IIITD Pilot</span>
+              <span className="text-[10px] opacity-80">
+                Turbidity • Temp • 15% Leak
+              </span>
+            </div>
           </SheetHeader>
 
           <Separator className="my-4" />
@@ -111,14 +120,14 @@ export const SimulatorDrawer: React.FC = () => {
           )}
 
           <div className="space-y-4">
-            {/* Water Quality Contaminants */}
+            {/* 1. Node Zero Physical Sensors */}
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
-                  Water Contaminants
+                  Node Zero Sensors & Gatekeeper
                 </span>
                 <Badge variant="outline" className="text-[10px]">
-                  Quality Gate
+                  Physical Node
                 </Badge>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -136,48 +145,22 @@ export const SimulatorDrawer: React.FC = () => {
                   variant="outline"
                   size="sm"
                   disabled={!canMutate || Boolean(loadingScenario)}
-                  onClick={() => triggerScenario("UNSAFE_HEAVY_METALS")}
-                  className="h-auto justify-start border-rose-500/30 bg-rose-500/5 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-500/15 dark:text-rose-300"
-                >
-                  <IconDroplet className="mr-1.5 size-3.5 shrink-0 text-rose-600" />
-                  <span>Heavy Metals</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!canMutate || Boolean(loadingScenario)}
-                  onClick={() => triggerScenario("UNSAFE_PH")}
-                  className="h-auto justify-start border-rose-500/30 bg-rose-500/5 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-500/15 dark:text-rose-300"
-                >
-                  <IconAlertTriangle className="mr-1.5 size-3.5 shrink-0 text-rose-600" />
-                  <span>Acidic pH (4.2)</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!canMutate || Boolean(loadingScenario)}
                   onClick={() => triggerScenario("UNSAFE_TURBIDITY")}
                   className="h-auto justify-start border-rose-500/30 bg-rose-500/5 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-500/15 dark:text-rose-300"
                 >
                   <IconDroplet className="mr-1.5 size-3.5 shrink-0 text-rose-600" />
                   <span>Turbidity Spill</span>
                 </Button>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Hydraulics & Nodes */}
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
-                  Hydraulic & Node Events
-                </span>
-                <Badge variant="outline" className="text-[10px]">
-                  Edge Node Mesh
-                </Badge>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!canMutate || Boolean(loadingScenario)}
+                  onClick={() => triggerScenario("UNSAFE_TEMPERATURE")}
+                  className="h-auto justify-start border-amber-500/30 bg-amber-500/5 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-500/15 dark:text-amber-300"
+                >
+                  <IconFlame className="mr-1.5 size-3.5 shrink-0 text-amber-600" />
+                  <span>Thermal Inflow</span>
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -186,8 +169,24 @@ export const SimulatorDrawer: React.FC = () => {
                   className="h-auto justify-start border-rose-500/30 bg-rose-500/5 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-500/15 dark:text-rose-300"
                 >
                   <IconAlertTriangle className="mr-1.5 size-3.5 shrink-0 text-rose-600" />
-                  <span>Pipe Leak (28%)</span>
+                  <span>Pipe Leak (30%)</span>
                 </Button>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* 2. Edge Node Diagnostics & Reset */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+                  Edge Diagnostics & Reset
+                </span>
+                <Badge variant="outline" className="text-[10px]">
+                  Diagnostics
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -196,7 +195,17 @@ export const SimulatorDrawer: React.FC = () => {
                   className="h-auto justify-start border-amber-500/30 bg-amber-500/5 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-500/15 dark:text-amber-300"
                 >
                   <IconTool className="mr-1.5 size-3.5 shrink-0 text-amber-600" />
-                  <span>Sensor Drift</span>
+                  <span>Turbidity Drift</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!canMutate || Boolean(loadingScenario)}
+                  onClick={() => triggerScenario("RESET")}
+                  className="border-border bg-muted/60 text-foreground hover:bg-muted h-auto justify-start py-2 text-xs font-semibold"
+                >
+                  <IconRotate2 className="text-foreground mr-1.5 size-3.5 shrink-0" />
+                  <span>Reset Baseline</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -221,41 +230,70 @@ export const SimulatorDrawer: React.FC = () => {
               </div>
             </div>
 
+            {/* 3. Extended Facility Suite (Collapsible / Gated) */}
             <Separator />
 
-            {/* Maintenance & Reset */}
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
-                  Maintenance & Reset
+            <details className="group border-border/70 bg-muted/30 rounded-xl border p-3 text-xs">
+              <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none items-center justify-between font-bold">
+                <span className="flex items-center gap-1.5">
+                  <span>Extended Facility Scenarios</span>
+                  <Badge variant="outline" className="py-0 text-[9px]">
+                    AMD & Multi-Barrier
+                  </Badge>
                 </span>
-                <Badge variant="outline" className="text-[10px]">
-                  Operations
-                </Badge>
+                <IconChevronDown className="size-3.5 transition group-open:rotate-180" />
+              </summary>
+              <div className="border-border/50 mt-3 space-y-2 border-t pt-2">
+                <p className="text-muted-foreground text-[11px]">
+                  Simulate heavy-metal runoff and multi-stage purification
+                  filters.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!canMutate || Boolean(loadingScenario)}
+                    onClick={() => triggerScenario("UNSAFE_HEAVY_METALS")}
+                    className="h-auto justify-start border-rose-500/30 bg-rose-500/5 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-500/15 dark:text-rose-300"
+                  >
+                    <IconDroplet className="mr-1.5 size-3.5 shrink-0 text-rose-600" />
+                    <span>Heavy Metals</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!canMutate || Boolean(loadingScenario)}
+                    onClick={() => triggerScenario("UNSAFE_PH")}
+                    className="h-auto justify-start border-rose-500/30 bg-rose-500/5 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-500/15 dark:text-rose-300"
+                  >
+                    <IconAlertTriangle className="mr-1.5 size-3.5 shrink-0 text-rose-600" />
+                    <span>Acidic pH (4.2)</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!canMutate || Boolean(loadingScenario)}
+                    onClick={() => triggerScenario("UNSAFE_TDS")}
+                    className="h-auto justify-start border-amber-500/30 bg-amber-500/5 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-500/15 dark:text-amber-300"
+                  >
+                    <IconDroplet className="mr-1.5 size-3.5 shrink-0 text-amber-600" />
+                    <span>TDS Breach</span>
+                  </Button>
+                  {FEATURES.PURIFICATION && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!canMutate || Boolean(loadingScenario)}
+                      onClick={() => triggerScenario("FILTER_WARNING")}
+                      className="h-auto justify-start border-amber-500/30 bg-amber-500/5 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-500/15 dark:text-amber-300"
+                    >
+                      <IconTool className="mr-1.5 size-3.5 shrink-0 text-amber-600" />
+                      <span>Filter Warning</span>
+                    </Button>
+                  )}
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!canMutate || Boolean(loadingScenario)}
-                  onClick={() => triggerScenario("FILTER_WARNING")}
-                  className="h-auto justify-start border-amber-500/30 bg-amber-500/5 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-500/15 dark:text-amber-300"
-                >
-                  <IconTool className="mr-1.5 size-3.5 shrink-0 text-amber-600" />
-                  <span>Filter Warning</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!canMutate || Boolean(loadingScenario)}
-                  onClick={() => triggerScenario("RESET")}
-                  className="border-border bg-muted/60 text-foreground hover:bg-muted h-auto justify-start py-2 text-xs font-semibold"
-                >
-                  <IconRotate2 className="text-foreground mr-1.5 size-3.5 shrink-0" />
-                  <span>Reset Baseline</span>
-                </Button>
-              </div>
-            </div>
+            </details>
           </div>
 
           {loadingScenario && (

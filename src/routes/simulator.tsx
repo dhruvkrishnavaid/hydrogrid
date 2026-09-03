@@ -20,9 +20,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import { NoStationSelected } from "../components/NoStationSelected";
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth-context";
+import { FEATURES } from "../lib/feature-flags";
 import type { SimulatorExecutionResult } from "../lib/types";
 
 export const Route = createFileRoute("/simulator")({
@@ -34,22 +34,24 @@ interface ScenarioMeta {
   badgeVariant: "default" | "destructive" | "secondary" | "outline";
   badgeClass?: string;
   title: string;
-  category: "Water Safety" | "Hydraulics & Nodes" | "Maintenance & Reset";
+  category:
+    | "Node Zero Sensors"
+    | "Hydraulics & Actuators"
+    | "Edge Diagnostics"
+    | "Maintenance & Reset"
+    | "Extended Facility Suite";
   description: string;
   expectedState: string;
+  prototypeActive: boolean;
 }
 
 function SimulatorPage() {
-  const { activeSiteId, isStationEntered, role } = useAuth();
+  const { activeSiteId, role } = useAuth();
   const [loadingScenario, setLoadingScenario] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<SimulatorExecutionResult | null>(
     null,
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  if (!isStationEntered || !activeSiteId) {
-    return <NoStationSelected title="Hardware & Scenario Injection Lab" />;
-  }
 
   const canMutate = role === "ADMIN" || role === "OPERATOR";
 
@@ -59,103 +61,144 @@ function SimulatorPage() {
       badgeVariant: "default",
       badgeClass:
         "bg-emerald-500/15 text-emerald-800 border-emerald-500/30 dark:text-emerald-300",
-      title: "1. Baseline Safe Operation",
-      category: "Water Safety",
+      title: "1. Baseline Nominal Operation (Node Zero — IIITD)",
+      category: "Node Zero Sensors",
       description:
-        "Injects nominal water parameters (pH 7.35, Turbidity 1.2 NTU, Heavy Metals 0.02 ppm, TDS 210 ppm).",
+        "Injects nominal prototype telemetry (Turbidity 1.2 NTU, Temperature 24.0°C, Flow 45 L/min). Solenoid valve OPEN.",
       expectedState:
-        "Score: 100 | Gate: PASS | Release: ALLOWED | Pump: RUNNING | Alarms: None",
-    },
-    {
-      name: "UNSAFE_HEAVY_METALS",
-      badgeVariant: "destructive",
-      title: "2. Heavy Metals Contamination (Gate Lockout)",
-      category: "Water Safety",
-      description:
-        "Injects toxic heavy metals reading (0.85 ppm > 0.10 limit) simulating industrial runoff.",
-      expectedState:
-        "Score: 55 | Gate: FAIL | Release: BLOCKED | Valve: CLOSED | Pump: STOPPED | Alert: CRITICAL",
-    },
-    {
-      name: "UNSAFE_PH",
-      badgeVariant: "destructive",
-      title: "3. Severe Acidic Inflow",
-      category: "Water Safety",
-      description: "Injects acidic pH 4.2 (< 6.5 threshold limit).",
-      expectedState:
-        "Score: 65 | Gate: FAIL | Release: BLOCKED | Valve: CLOSED | Alert: CRITICAL",
+        "Score: 100 | Gate: PASS | Release: ALLOWED | Solenoid: OPEN | Alarms: None",
+      prototypeActive: true,
     },
     {
       name: "UNSAFE_TURBIDITY",
       badgeVariant: "destructive",
-      title: "4. High Turbidity Inflow (Silt Spill)",
-      category: "Water Safety",
-      description: "Injects heavy turbidity (18.5 NTU > 5.0 threshold).",
+      title: "2. Turbidity Spill & Automated Solenoid Lockout",
+      category: "Node Zero Sensors",
+      description:
+        "Injects high optical turbidity (28.5 NTU > 5.0 NTU threshold). Autonomous gatekeeper trips physical 12V shutoff valve.",
       expectedState:
-        "Score: 78 | Gate: FAIL | Release: BLOCKED | Valve: CLOSED | Alert: CRITICAL",
+        "Score: 35 | Gate: FAIL | Release: BLOCKED | Solenoid Valve: CLOSED | Alert: CRITICAL",
+      prototypeActive: true,
+    },
+    {
+      name: "UNSAFE_TEMPERATURE",
+      badgeVariant: "secondary",
+      badgeClass:
+        "bg-amber-500/15 text-amber-800 border-amber-500/30 dark:text-amber-300",
+      title: "3. Thermal Inflow Anomaly",
+      category: "Node Zero Sensors",
+      description:
+        "Injects elevated fluid temperature (43.5°C > 35.0°C maximum limit) on precision temperature probe.",
+      expectedState:
+        "Temp: 43.5°C | Gate: PASS (Warning) | Alert: WARNING (Thermal Inflow Envelope)",
+      prototypeActive: true,
     },
     {
       name: "LEAK",
       badgeVariant: "destructive",
-      title: "5. Distribution Pipeline Leak",
-      category: "Hydraulics & Nodes",
+      title: "4. 15% Differential Mass-Balance Leak Detection",
+      category: "Hydraulics & Actuators",
       description:
-        "Simulates outlet flow drop to 32 L/min (28.8% mismatch > 15.0% threshold).",
+        "Simulates outlet turbine drop to 31.5 L/min (30.0% differential mismatch > 15.0% threshold). Node Zero emergency pipe isolation.",
       expectedState:
-        "Leak: DETECTED | Gate: FAIL | Valve: CLOSED (ISOLATED) | Alert: CRITICAL",
+        "Leak: DETECTED | Gate: FAIL | Solenoid: CLOSED (ISOLATED) | Alert: CRITICAL",
+      prototypeActive: true,
     },
     {
       name: "SENSOR_DRIFT",
       badgeVariant: "secondary",
       badgeClass:
         "bg-amber-500/15 text-amber-800 border-amber-500/30 dark:text-amber-300",
-      title: "6. pH Probe Degradation & Drift",
-      category: "Hydraulics & Nodes",
+      title: "5. Optical Turbidity Nephelometer Drift",
+      category: "Edge Diagnostics",
       description:
-        "Simulates calibration loss (+0.85 drift) on primary pH electrode.",
+        "Simulates probe optical degradation (+3.6 NTU drift). Reduces confidence rating and flags calibration requirement.",
       expectedState:
         "Probe: DEGRADED | Confidence drops to 73% | Alert: WARNING (Calibration Required)",
+      prototypeActive: true,
     },
     {
       name: "DEVICE_OFFLINE",
       badgeVariant: "destructive",
-      title: "7. Primary Node Power / Heartbeat Timeout",
-      category: "Hydraulics & Nodes",
+      title: "6. Node Zero (IIITD) Power / Heartbeat Timeout",
+      category: "Edge Diagnostics",
       description:
-        "Simulates power loss or signal failure on Primary Sensor Node.",
+        "Simulates edge node power disconnection or telemetry timeout at IIITD.",
       expectedState:
-        "Device: OFFLINE | Gate: FAIL | Release: BLOCKED | Alert: CRITICAL",
+        "Device: OFFLINE | Gate: FAIL | Release: BLOCKED | Solenoid: CLOSED | Alert: CRITICAL",
+      prototypeActive: true,
     },
     {
       name: "DEVICE_ONLINE",
       badgeVariant: "default",
       badgeClass:
         "bg-emerald-500/15 text-emerald-800 border-emerald-500/30 dark:text-emerald-300",
-      title: "8. Node Reconnect & Heartbeat Recovery",
-      category: "Hydraulics & Nodes",
-      description: "Restores primary sensor node connectivity.",
+      title: "7. Node Zero (IIITD) Heartbeat Restored",
+      category: "Edge Diagnostics",
+      description: "Restores Node Zero telemetry heartbeat and streaming.",
       expectedState: "Device: ONLINE | Event: SYSTEM_RECOVERED",
-    },
-    {
-      name: "FILTER_WARNING",
-      badgeVariant: "secondary",
-      badgeClass:
-        "bg-amber-500/15 text-amber-800 border-amber-500/30 dark:text-amber-300",
-      title: "9. Activated Carbon Filter Life Warning",
-      category: "Maintenance & Reset",
-      description: "Reduces Stage 2 filter media remaining life to 18%.",
-      expectedState: "Carbon Life: 18% | Mode: MAINTENANCE | Alert: WARNING",
+      prototypeActive: true,
     },
     {
       name: "RESET",
       badgeVariant: "outline",
-      title: "10. Full System Baseline Reset",
+      title: "8. Full System Baseline Reset",
       category: "Maintenance & Reset",
       description:
-        "Clears all active faults, restarts feed pump, opens valve, and restores clean 100 score.",
+        "Clears active faults, opens solenoid valve, and restores clean nominal score (100).",
       expectedState:
-        "System Clean: Score 100, Gate PASS, Release ALLOWED, Pump RUNNING",
+        "System Clean: Score 100, Gate PASS, Release ALLOWED, Valve OPEN",
+      prototypeActive: true,
     },
+    {
+      name: "UNSAFE_HEAVY_METALS",
+      badgeVariant: "destructive",
+      title: "9. Heavy Metals Contamination (AMD Runoff)",
+      category: "Extended Facility Suite",
+      description:
+        "Injects toxic heavy metals reading (0.85 ppm > 0.10 limit) simulating industrial Acid Mine Drainage.",
+      expectedState:
+        "Score: 55 | Gate: FAIL | Release: BLOCKED | Valve: CLOSED | Alert: CRITICAL",
+      prototypeActive: false,
+    },
+    {
+      name: "UNSAFE_PH",
+      badgeVariant: "destructive",
+      title: "10. Severe Acid Mine Drainage (Low pH)",
+      category: "Extended Facility Suite",
+      description: "Injects acidic pH 4.2 (< 6.5 threshold limit).",
+      expectedState:
+        "Score: 65 | Gate: FAIL | Release: BLOCKED | Valve: CLOSED | Alert: CRITICAL",
+      prototypeActive: false,
+    },
+    {
+      name: "UNSAFE_TDS",
+      badgeVariant: "secondary",
+      badgeClass:
+        "bg-amber-500/15 text-amber-800 border-amber-500/30 dark:text-amber-300",
+      title: "11. High Total Dissolved Solids (TDS Breach)",
+      category: "Extended Facility Suite",
+      description: "Injects elevated TDS (850 ppm > 500 ppm standard limit).",
+      expectedState: "Score: 80 | Gate: PASS (Warning) | Alert: WARNING",
+      prototypeActive: false,
+    },
+    ...(FEATURES.PURIFICATION
+      ? [
+          {
+            name: "FILTER_WARNING" as const,
+            badgeVariant: "secondary" as const,
+            badgeClass:
+              "bg-amber-500/15 text-amber-800 border-amber-500/30 dark:text-amber-300",
+            title: "12. Activated Carbon Filter Life Warning",
+            category: "Extended Facility Suite" as const,
+            description:
+              "Reduces Stage 2 GAC activated carbon filter life to 18%.",
+            expectedState:
+              "Carbon Life: 18% | Mode: MAINTENANCE | Alert: WARNING",
+            prototypeActive: false,
+          },
+        ]
+      : []),
   ];
 
   const handleExecuteScenario = async (scenario: string) => {
@@ -200,9 +243,16 @@ function SimulatorPage() {
       </Card>
 
       <div className="border-border/80 flex flex-wrap items-center justify-between gap-3 border-b pb-3">
-        <h2 className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
-          Scenario Catalog (10 Scenarios)
-        </h2>
+        <div>
+          <h2 className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+            Node Zero Prototype Scenarios (IIITD Pilot)
+          </h2>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            Hardware-backed tests for Node Zero's Optical Turbidity sensor,
+            Precision Temperature probe, Flow Turbine, and 12V Solenoid Shutoff
+            valve.
+          </p>
+        </div>
 
         {!canMutate && (
           <Badge
@@ -269,7 +319,7 @@ function SimulatorPage() {
               </div>
               <div className="border-border/70 bg-card rounded-xl border p-3">
                 <span className="text-muted-foreground block text-[10px] font-bold uppercase">
-                  Isolation Valve
+                  Solenoid Valve
                 </span>
                 <span className="text-foreground text-lg font-bold">
                   {lastResult.flow.valveStatus}
@@ -280,64 +330,147 @@ function SimulatorPage() {
         </Card>
       )}
 
-      {/* Scenarios Grid */}
+      {/* Node Zero Scenarios Grid */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {scenarios.map((sc) => (
-          <Card
-            key={sc.name}
-            className="flex flex-col justify-between shadow-2xs transition hover:border-[var(--brand-secondary)]"
-          >
-            <CardHeader className="p-5 pb-2">
-              <div className="flex items-center justify-between">
-                <Badge
-                  variant={sc.badgeVariant}
-                  className={`text-[10px] font-bold uppercase ${sc.badgeClass ?? ""}`}
+        {scenarios
+          .filter((sc) => sc.prototypeActive)
+          .map((sc) => (
+            <Card
+              key={sc.name}
+              className="flex flex-col justify-between shadow-2xs transition hover:border-[var(--brand-secondary)]"
+            >
+              <CardHeader className="p-5 pb-2">
+                <div className="flex items-center justify-between">
+                  <Badge
+                    variant={sc.badgeVariant}
+                    className={`text-[10px] font-bold uppercase ${sc.badgeClass ?? ""}`}
+                  >
+                    {sc.category}
+                  </Badge>
+                  <span className="text-muted-foreground text-[11px] font-semibold">
+                    {sc.name}
+                  </span>
+                </div>
+
+                <CardTitle className="text-foreground pt-2 text-sm font-bold">
+                  {sc.title}
+                </CardTitle>
+                <CardDescription className="text-xs leading-relaxed">
+                  {sc.description}
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="p-5 pt-1">
+                <div className="border-border/80 bg-muted/30 rounded-xl border p-3 text-xs">
+                  <span className="text-muted-foreground mb-0.5 block text-[10px] font-bold uppercase">
+                    Expected System Reaction:
+                  </span>
+                  <span className="text-foreground">{sc.expectedState}</span>
+                </div>
+              </CardContent>
+
+              <CardFooter className="border-border/60 border-t p-4 pt-3">
+                <Button
+                  disabled={!canMutate || loadingScenario === sc.name}
+                  onClick={() => handleExecuteScenario(sc.name)}
+                  className="w-full gap-2 font-semibold"
                 >
-                  {sc.category}
-                </Badge>
-                <span className="text-muted-foreground text-[11px] font-semibold">
-                  {sc.name}
-                </span>
-              </div>
+                  {loadingScenario === sc.name ? (
+                    <>
+                      <IconLoader2 className="size-4 animate-spin" />
+                      <span>Injecting Scenario...</span>
+                    </>
+                  ) : (
+                    <>
+                      <IconPlayerPlay className="size-3.5 fill-current" />
+                      <span>Inject: {sc.name}</span>
+                    </>
+                  )}
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+      </div>
 
-              <CardTitle className="text-foreground pt-2 text-sm font-bold">
-                {sc.title}
-              </CardTitle>
-              <CardDescription className="text-xs leading-relaxed">
-                {sc.description}
-              </CardDescription>
-            </CardHeader>
+      {/* Extended Facility Scenarios Section */}
+      <div className="border-border/80 mt-8 flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+              Extended Multi-Stage Facility Suite
+            </h2>
+            <Badge variant="outline" className="text-[10px]">
+              AMD & Multi-Barrier
+            </Badge>
+          </div>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            Simulates industrial acid mine drainage, chemical runoff, and
+            purification media degradation beyond the Node Zero single-node
+            hardware payload.
+          </p>
+        </div>
+      </div>
 
-            <CardContent className="p-5 pt-1">
-              <div className="border-border/80 bg-muted/30 rounded-xl border p-3 text-xs">
-                <span className="text-muted-foreground mb-0.5 block text-[10px] font-bold uppercase">
-                  Expected System Reaction:
-                </span>
-                <span className="text-foreground">{sc.expectedState}</span>
-              </div>
-            </CardContent>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {scenarios
+          .filter((sc) => !sc.prototypeActive)
+          .map((sc) => (
+            <Card
+              key={sc.name}
+              className="border-border/60 bg-muted/15 flex flex-col justify-between shadow-2xs transition hover:border-[var(--brand-secondary)]"
+            >
+              <CardHeader className="p-5 pb-2">
+                <div className="flex items-center justify-between">
+                  <Badge
+                    variant={sc.badgeVariant}
+                    className={`text-[10px] font-bold uppercase ${sc.badgeClass ?? ""}`}
+                  >
+                    {sc.category}
+                  </Badge>
+                  <span className="text-muted-foreground text-[11px] font-semibold">
+                    {sc.name}
+                  </span>
+                </div>
 
-            <CardFooter className="border-border/60 border-t p-4 pt-3">
-              <Button
-                disabled={!canMutate || loadingScenario === sc.name}
-                onClick={() => handleExecuteScenario(sc.name)}
-                className="w-full gap-2 font-semibold"
-              >
-                {loadingScenario === sc.name ? (
-                  <>
-                    <IconLoader2 className="size-4 animate-spin" />
-                    <span>Injecting Scenario...</span>
-                  </>
-                ) : (
-                  <>
-                    <IconPlayerPlay className="size-3.5 fill-current" />
-                    <span>Inject: {sc.name}</span>
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
+                <CardTitle className="text-foreground pt-2 text-sm font-bold">
+                  {sc.title}
+                </CardTitle>
+                <CardDescription className="text-xs leading-relaxed">
+                  {sc.description}
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="p-5 pt-1">
+                <div className="border-border/80 bg-muted/30 rounded-xl border p-3 text-xs">
+                  <span className="text-muted-foreground mb-0.5 block text-[10px] font-bold uppercase">
+                    Expected System Reaction:
+                  </span>
+                  <span className="text-foreground">{sc.expectedState}</span>
+                </div>
+              </CardContent>
+
+              <CardFooter className="border-border/60 border-t p-4 pt-3">
+                <Button
+                  variant="outline"
+                  disabled={!canMutate || loadingScenario === sc.name}
+                  onClick={() => handleExecuteScenario(sc.name)}
+                  className="w-full gap-2 font-semibold"
+                >
+                  {loadingScenario === sc.name ? (
+                    <>
+                      <IconLoader2 className="size-4 animate-spin" />
+                      <span>Injecting Scenario...</span>
+                    </>
+                  ) : (
+                    <>
+                      <IconPlayerPlay className="size-3.5 fill-current" />
+                      <span>Inject: {sc.name}</span>
+                    </>
+                  )}
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
       </div>
 
       {/* Strict Scenario Error Handling Verification Card */}

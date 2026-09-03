@@ -20,6 +20,7 @@ export const VALID_SCENARIOS = [
   "UNSAFE_HEAVY_METALS",
   "UNSAFE_PH",
   "UNSAFE_TURBIDITY",
+  "UNSAFE_TEMPERATURE",
   "UNSAFE_TDS",
   "QUALITY_FAILURE",
   "LEAK_DETECTED",
@@ -30,6 +31,9 @@ export const VALID_SCENARIOS = [
   "CALIBRATION_REQUIRED",
   "FILTER_WARNING",
   "RESET",
+  "TURBIDITY_SPILL",
+  "THERMAL_ANOMALY",
+  "TURBIDITY_DRIFT",
 ] as const;
 
 export type SimulatorScenario = (typeof VALID_SCENARIOS)[number];
@@ -94,6 +98,12 @@ export function normalizeScenario(scenario: string): SimulatorScenario | null {
       return "UNSAFE_HEAVY_METALS";
     case "LEAK":
       return "LEAK_DETECTED";
+    case "TURBIDITY_SPILL":
+      return "UNSAFE_TURBIDITY";
+    case "THERMAL_ANOMALY":
+      return "UNSAFE_TEMPERATURE";
+    case "TURBIDITY_DRIFT":
+      return "SENSOR_DRIFT";
     default:
       return upper as SimulatorScenario;
   }
@@ -145,7 +155,49 @@ export async function executeSimulatorScenario(
       break;
 
     case "UNSAFE_TURBIDITY":
-      reading = { ...BASELINE_SAFE_READING, turbidity: 18.5 };
+      reading = {
+        ...BASELINE_SAFE_READING,
+        turbidity: 28.5,
+        heavyMetals: 0.25,
+      };
+      extraEvent = await createEvent({
+        site_id: siteId,
+        device_id: deviceId ?? null,
+        type: "QUALITY_GATE_BLOCKED",
+        severity: "CRITICAL",
+        message:
+          "Optical turbidity spike (28.5 NTU > 5.0 NTU limit). Node Zero automated solenoid shutoff valve tripped.",
+      });
+      extraAlert = await createAlert({
+        site_id: siteId,
+        event_id: extraEvent?.id ?? null,
+        type: "QUALITY_GATE_BLOCKED",
+        severity: "CRITICAL",
+        status: "UNREAD",
+        message:
+          "Critical turbidity ingress (28.5 NTU). Quality Gate locked out; 12V solenoid shutoff valve closed.",
+      });
+      break;
+
+    case "UNSAFE_TEMPERATURE":
+      reading = { ...BASELINE_SAFE_READING, temperature: 43.5 };
+      extraEvent = await createEvent({
+        site_id: siteId,
+        device_id: deviceId ?? null,
+        type: "PARAMETER_OUT_OF_BOUNDS",
+        severity: "WARNING",
+        message:
+          "Node Zero fluid temperature (43.5°C) exceeded normal operating band (15.0–35.0°C).",
+      });
+      extraAlert = await createAlert({
+        site_id: siteId,
+        event_id: extraEvent?.id ?? null,
+        type: "PARAMETER_OUT_OF_BOUNDS",
+        severity: "WARNING",
+        status: "UNREAD",
+        message:
+          "Thermal intake anomaly: 43.5°C detected by Node Zero precision temperature probe.",
+      });
       break;
 
     case "UNSAFE_TDS":
@@ -154,16 +206,16 @@ export async function executeSimulatorScenario(
 
     case "LEAK_DETECTED":
       inletFlow = 45.0;
-      outletFlow = 32.0;
-      flowMismatchPercent = 28.8;
-      reading = { ...BASELINE_SAFE_READING, flowRate: 45.0 };
+      outletFlow = 31.5;
+      flowMismatchPercent = 30.0;
+      reading = { ...BASELINE_SAFE_READING, flowRate: 31.5 };
       extraEvent = await createEvent({
         site_id: siteId,
         device_id: deviceId ?? null,
         type: "LEAK_DETECTED",
         severity: "CRITICAL",
         message:
-          "Pipeline flow mismatch 28.8% exceeded 15% threshold. Valve isolated.",
+          "Pipeline flow differential mismatch 30.0% exceeded 15.0% threshold. Node Zero 12V solenoid valve isolated.",
       });
       extraAlert = await createAlert({
         site_id: siteId,
@@ -171,45 +223,77 @@ export async function executeSimulatorScenario(
         type: "LEAK_DETECTED",
         severity: "CRITICAL",
         status: "UNREAD",
-        message: "Pipeline leak detected. Flow mismatch 28.8%. Valve isolated.",
+        message:
+          "Pipeline leak detected. Flow mismatch 30.0%. Solenoid shutoff valve isolated.",
       });
       broadcastSiteEvent(siteId, "leak.detected", {
         siteId,
-        differencePercent: 28.8,
+        differencePercent: 30.0,
         thresholdPercent: 15.0,
         valveStatus: "CLOSED",
       });
       break;
 
-    case "SENSOR_DRIFT":
-      reading = { ...BASELINE_SAFE_READING, ph: 7.95 };
+    case "SENSOR_DRIFT": {
+      const isAllSensors = process.env.VITE_ENABLE_ALL_SENSORS === "true";
+      if (isAllSensors) {
+        reading = { ...BASELINE_SAFE_READING, ph: 7.95 };
+        sensorStatus = "DEGRADED";
+        sensorDrift = 0.85;
+        extraEvent = await createEvent({
+          site_id: siteId,
+          device_id: deviceId ?? null,
+          type: "SENSOR_DRIFT",
+          severity: "WARNING",
+          message: "pH sensor drift detected (0.85). Calibration required.",
+        });
+        extraAlert = await createAlert({
+          site_id: siteId,
+          event_id: extraEvent?.id ?? null,
+          type: "SENSOR_DRIFT",
+          severity: "WARNING",
+          status: "UNREAD",
+          message:
+            "Sensor health degraded: pH drift exceeds 0.50. Calibration required.",
+        });
+        broadcastSiteEvent(siteId, "sensor.health-changed", {
+          siteId,
+          sensor: "ph",
+          status: "DEGRADED",
+          drift: 0.85,
+        });
+      } else {
+        reading = { ...BASELINE_SAFE_READING, turbidity: 4.8 };
+        sensorStatus = "DEGRADED";
+        sensorDrift = 3.6;
+        extraEvent = await createEvent({
+          site_id: siteId,
+          device_id: deviceId ?? null,
+          type: "SENSOR_DRIFT",
+          severity: "WARNING",
+          message:
+            "Optical turbidity nephelometer drift detected (+3.6 NTU). Calibration required.",
+        });
+        extraAlert = await createAlert({
+          site_id: siteId,
+          event_id: extraEvent?.id ?? null,
+          type: "SENSOR_DRIFT",
+          severity: "WARNING",
+          status: "UNREAD",
+          message:
+            "Sensor health degraded: Turbidity probe drift exceeds 3.0 NTU tolerance. Calibration required.",
+        });
+        broadcastSiteEvent(siteId, "sensor.health-changed", {
+          siteId,
+          sensor: "turbidity",
+          status: "DEGRADED",
+          drift: 3.6,
+        });
+      }
       sensorDegradedCount = 1;
       calibrationRequired = true;
-      sensorStatus = "DEGRADED";
-      sensorDrift = 0.85;
-      extraEvent = await createEvent({
-        site_id: siteId,
-        device_id: deviceId ?? null,
-        type: "SENSOR_DRIFT",
-        severity: "WARNING",
-        message: "pH sensor drift detected (0.85). Calibration required.",
-      });
-      extraAlert = await createAlert({
-        site_id: siteId,
-        event_id: extraEvent?.id ?? null,
-        type: "SENSOR_DRIFT",
-        severity: "WARNING",
-        status: "UNREAD",
-        message:
-          "Sensor health degraded: pH drift exceeds 0.50. Calibration required.",
-      });
-      broadcastSiteEvent(siteId, "sensor.health-changed", {
-        siteId,
-        sensor: "ph",
-        status: "DEGRADED",
-        drift: 0.85,
-      });
       break;
+    }
 
     case "CALIBRATION_REQUIRED":
       calibrationRequired = true;
@@ -219,7 +303,7 @@ export async function executeSimulatorScenario(
         device_id: deviceId ?? null,
         type: "CALIBRATION_REQUIRED",
         severity: "WARNING",
-        message: "Routine 30-day sensor calibration required.",
+        message: "Routine 30-day sensor calibration required for Node Zero.",
       });
       extraAlert = await createAlert({
         site_id: siteId,
@@ -228,7 +312,7 @@ export async function executeSimulatorScenario(
         severity: "WARNING",
         status: "UNREAD",
         message:
-          "Sensor calibration required for Primary Node (30 days expired).",
+          "Sensor calibration required for Node Zero probes (30 days expired).",
       });
       broadcastSiteEvent(siteId, "sensor.health-changed", {
         siteId,
@@ -245,7 +329,7 @@ export async function executeSimulatorScenario(
         type: "DEVICE_OFFLINE",
         severity: "CRITICAL",
         message:
-          "Primary Sensor Node heartbeat timed out. Device state OFFLINE.",
+          "Node Zero (IIITD Pilot) heartbeat timed out. Edge node state OFFLINE.",
       });
       extraAlert = await createAlert({
         site_id: siteId,
@@ -254,7 +338,7 @@ export async function executeSimulatorScenario(
         severity: "CRITICAL",
         status: "UNREAD",
         message:
-          "Device offline: Primary Sensor Node lost telemetry connection.",
+          "Device offline: Node Zero (IIITD Pilot) lost edge telemetry connection.",
       });
       broadcastSiteEvent(siteId, "device.status-changed", {
         siteId,
@@ -270,7 +354,8 @@ export async function executeSimulatorScenario(
         device_id: deviceId ?? null,
         type: "SYSTEM_RECOVERED",
         severity: "INFO",
-        message: "Primary Sensor Node reconnected. Telemetry streaming active.",
+        message:
+          "Node Zero (IIITD Pilot) reconnected. Autonomous edge telemetry streaming active.",
       });
       broadcastSiteEvent(siteId, "device.status-changed", {
         siteId,
@@ -331,7 +416,8 @@ export async function executeSimulatorScenario(
         device_id: deviceId ?? null,
         type: "SYSTEM_RECOVERED",
         severity: "INFO",
-        message: "System reset to baseline operational parameters.",
+        message:
+          "Node Zero (IIITD Pilot) reset to nominal baseline operational parameters.",
       });
       broadcastSiteEvent(siteId, "system.recovered", {
         siteId,

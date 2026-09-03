@@ -38,27 +38,33 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { NoStationSelected } from "../components/NoStationSelected";
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth-context";
+import { FEATURES, isSensorKeyEnabled } from "../lib/feature-flags";
 import type { DeviceRecord, SensorCalibrationRecord } from "../lib/types";
 
 export const Route = createFileRoute("/devices")({
   component: DevicesPage,
 });
 
+const PROBE_OPTIONS = [
+  { value: "turbidity", label: "Turbidity Nephelometer (20.0 NTU Standard)" },
+  { value: "temperature", label: "Temperature Probe (25.0 °C Standard)" },
+  { value: "flowRate", label: "Flow Turbine (Differential Calibrator)" },
+  { value: "ph", label: "pH Probe (pH 7.00 Buffer Solution)" },
+  { value: "tds", label: "TDS Electrode (1413 µS/cm Standard)" },
+  { value: "heavyMetals", label: "Heavy Metals Sensor (0.10 ppm Reference)" },
+];
+
 function DevicesPage() {
-  const {
-    activeSiteId,
-    isStationEntered,
-    role,
-    isLoading: isAuthLoading,
-  } = useAuth();
+  const { activeSiteId, role } = useAuth();
   const [devices, setDevices] = useState<Array<DeviceRecord>>([]);
   const [calibrations, setCalibrations] = useState<
     Array<SensorCalibrationRecord>
   >([]);
-  const [calSensor, setCalSensor] = useState<string>("ph");
+  const [calSensor, setCalSensor] = useState<string>(
+    FEATURES.ALL_SENSORS ? "ph" : "turbidity",
+  );
   const [calOffset, setCalOffset] = useState<string>("0.00");
   const [isSubmittingCal, setIsSubmittingCal] = useState<boolean>(false);
   const [calMessage, setCalMessage] = useState<string | null>(null);
@@ -68,18 +74,12 @@ function DevicesPage() {
   const canCalibrate = role === "ADMIN" || role === "OPERATOR";
 
   const loadData = useCallback(async () => {
-    if (!activeSiteId || !isStationEntered) {
-      if (!isAuthLoading) {
-        setIsLoading(false);
-      }
-      return;
-    }
-
+    const siteId = activeSiteId ?? "00000000-0000-0000-0000-000000000001";
     setIsLoading(true);
     try {
       const [devRes, calRes] = await Promise.all([
-        api.getDashboardOverview(activeSiteId).then((o) => o.devices),
-        api.getCalibrations(activeSiteId).then((c) => c.calibrations),
+        api.getDashboardOverview(siteId).then((o) => o.devices),
+        api.getCalibrations(siteId).then((c) => c.calibrations),
       ]);
       setDevices(devRes);
       setCalibrations(calRes);
@@ -88,15 +88,11 @@ function DevicesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeSiteId, isAuthLoading, isStationEntered]);
+  }, [activeSiteId]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  if (!isStationEntered || !activeSiteId) {
-    return <NoStationSelected title="Hardware Diagnostics & Calibration" />;
-  }
 
   const handleRecordCalibration = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,7 +212,12 @@ function DevicesPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-right text-xs">
-                        {new Date(d.updated_at).toLocaleString()}
+                        {new Date(
+                          (d as any).last_heartbeat ??
+                            d.updated_at ??
+                            d.created_at ??
+                            Date.now(),
+                        ).toLocaleTimeString()}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -262,18 +263,13 @@ function DevicesPage() {
                         <SelectValue placeholder="Select Probe" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ph">
-                          pH Probe (pH 7.00 Buffer Solution)
-                        </SelectItem>
-                        <SelectItem value="tds">
-                          TDS Electrode (1413 µS/cm Standard)
-                        </SelectItem>
-                        <SelectItem value="turbidity">
-                          Turbidity Nephelometer (20.0 NTU Standard)
-                        </SelectItem>
-                        <SelectItem value="heavyMetals">
-                          Heavy Metals Sensor (0.10 ppm Reference)
-                        </SelectItem>
+                        {PROBE_OPTIONS.filter((p) =>
+                          isSensorKeyEnabled(p.value),
+                        ).map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -383,7 +379,12 @@ function DevicesPage() {
                           </div>
                           <span className="text-muted-foreground text-[11px]">
                             Calibrated:{" "}
-                            {new Date(c.calibrated_at).toLocaleDateString()}
+                            {new Date(
+                              (c as any).last_calibrated_at ??
+                                (c as any).calibrated_at ??
+                                (c as any).created_at ??
+                                Date.now(),
+                            ).toLocaleDateString()}
                           </span>
                         </div>
                         <Badge

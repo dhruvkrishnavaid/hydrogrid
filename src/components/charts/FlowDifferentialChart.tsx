@@ -34,7 +34,7 @@ interface FlowDifferentialChartProps {
 
 export function FlowDifferentialChart({
   history,
-  currentMismatch = 0.0,
+  currentMismatch: _currentMismatch = 0.0,
   isLeak = false,
   className,
 }: FlowDifferentialChartProps) {

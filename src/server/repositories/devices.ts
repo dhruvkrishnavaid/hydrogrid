@@ -16,33 +16,37 @@ const DEFAULT_DEMO_DEVICES: Array<Device> = [
   {
     id: "00000000-0000-0000-0000-000000000101",
     site_id: "00000000-0000-0000-0000-000000000001",
-    name: "Source Node Alpha",
+    name: "Node Zero",
     type: "SOURCE_SENSOR_NODE",
     status: "ONLINE",
-    firmware_version: "v2.4.1",
-    last_heartbeat: new Date().toISOString(),
+    firmware_version: "v1.0.0-prototype",
+    last_seen_at: new Date().toISOString(),
     created_at: new Date().toISOString(),
   },
-  {
-    id: "00000000-0000-0000-0000-000000000102",
-    site_id: "00000000-0000-0000-0000-000000000001",
-    name: "Purification Core PLC",
-    type: "PURIFICATION_CONTROLLER",
-    status: "ONLINE",
-    firmware_version: "v3.0.0",
-    last_heartbeat: new Date().toISOString(),
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "00000000-0000-0000-0000-000000000103",
-    site_id: "00000000-0000-0000-0000-000000000001",
-    name: "Distribution Flow Monitor",
-    type: "DISTRIBUTION_NODE",
-    status: "ONLINE",
-    firmware_version: "v1.8.2",
-    last_heartbeat: new Date().toISOString(),
-    created_at: new Date().toISOString(),
-  },
+  ...(process.env.VITE_ENABLE_PURIFICATION === "true"
+    ? [
+        {
+          id: "00000000-0000-0000-0000-000000000102",
+          site_id: "00000000-0000-0000-0000-000000000001",
+          name: "Purification Core PLC",
+          type: "PURIFICATION_CONTROLLER" as const,
+          status: "ONLINE" as const,
+          firmware_version: "v3.0.0",
+          last_seen_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: "00000000-0000-0000-0000-000000000103",
+          site_id: "00000000-0000-0000-0000-000000000001",
+          name: "Distribution Flow Monitor",
+          type: "DISTRIBUTION_NODE" as const,
+          status: "ONLINE" as const,
+          firmware_version: "v1.8.2",
+          last_seen_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+        },
+      ]
+    : []),
 ];
 
 export async function getDevicesBySiteId(

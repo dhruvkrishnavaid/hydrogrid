@@ -26,12 +26,12 @@ export interface UpdateSite {
 
 export const DEFAULT_DEMO_SITE: Site = {
   id: "00000000-0000-0000-0000-000000000001",
-  name: "Station 01 — Bhimavaram WTP",
-  village: "Bhimavaram",
-  district: "West Godavari",
-  state: "Andhra Pradesh",
-  latitude: 16.5449,
-  longitude: 81.5212,
+  name: "Node Zero — IIITD Pilot",
+  village: "IIIT-Delhi Campus (Okhla)",
+  district: "South East Delhi",
+  state: "Delhi",
+  latitude: 28.5459,
+  longitude: 77.2732,
   status: "ONLINE",
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),

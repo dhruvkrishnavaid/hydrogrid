@@ -20,7 +20,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { NoStationSelected } from "../components/NoStationSelected";
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth-context";
 import type { AlertRecord, EventRecord } from "../lib/types";
@@ -30,12 +29,7 @@ export const Route = createFileRoute("/alerts")({
 });
 
 function AlertsPage() {
-  const {
-    activeSiteId,
-    isStationEntered,
-    role,
-    isLoading: isAuthLoading,
-  } = useAuth();
+  const { activeSiteId, role } = useAuth();
   const [alerts, setAlerts] = useState<Array<AlertRecord>>([]);
   const [events, setEvents] = useState<Array<EventRecord>>([]);
   const [severityFilter, setSeverityFilter] = useState<string>("ALL");
@@ -45,18 +39,12 @@ function AlertsPage() {
   const canAcknowledge = role === "ADMIN" || role === "OPERATOR";
 
   const loadData = useCallback(async () => {
-    if (!activeSiteId || !isStationEntered) {
-      if (!isAuthLoading) {
-        setIsLoading(false);
-      }
-      return;
-    }
-
+    const siteId = activeSiteId ?? "00000000-0000-0000-0000-000000000001";
     setIsLoading(true);
     try {
       const [alertRes, eventRes] = await Promise.all([
-        api.getAlerts(activeSiteId),
-        api.getEvents(activeSiteId),
+        api.getAlerts(siteId),
+        api.getEvents(siteId),
       ]);
       setAlerts(alertRes.alerts);
       setEvents(eventRes.events);
@@ -65,15 +53,11 @@ function AlertsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeSiteId, isAuthLoading, isStationEntered]);
+  }, [activeSiteId]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  if (!isStationEntered || !activeSiteId) {
-    return <NoStationSelected title="System Alarms & Audit Log" />;
-  }
 
   const handleAcknowledge = async (alertId: string) => {
     if (!activeSiteId || !canAcknowledge) return;

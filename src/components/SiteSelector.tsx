@@ -7,14 +7,19 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 
 import { useAuth } from "../lib/auth-context";
 
 export const SiteSelector: React.FC = () => {
-  const { sites, activeSiteId, setActiveSiteId, isLoading, isAuthenticating } =
-    useAuth();
+  const {
+    sites,
+    activeSiteId,
+    activeSite,
+    setActiveSiteId,
+    isLoading,
+    isAuthenticating,
+  } = useAuth();
 
   if (isLoading || isAuthenticating) {
     return (
@@ -28,11 +33,13 @@ export const SiteSelector: React.FC = () => {
     );
   }
 
-  if (sites.length === 0) {
+  if (sites.length <= 1) {
     return (
-      <Badge variant="outline" className="text-muted-foreground text-xs">
-        No Stations Found
-      </Badge>
+      <div className="flex items-center gap-2">
+        <span className="text-foreground text-xs font-bold">
+          {activeSite?.name ?? "Node Zero — IIITD Pilot"}
+        </span>
+      </div>
     );
   }
 
@@ -49,7 +56,7 @@ export const SiteSelector: React.FC = () => {
           className="border-border/80 bg-background/80 hover:bg-muted/60 h-8 gap-2 border px-3 text-xs font-semibold shadow-xs"
         >
           <IconBuildingFactory2 className="size-3.5 text-[var(--brand-secondary)]" />
-          <SelectValue placeholder="Select Station" />
+          <span>{activeSite?.name ?? "Select Station"}</span>
         </SelectTrigger>
         <SelectContent align="start" className="min-w-[220px]">
           {sites.map((site) => (

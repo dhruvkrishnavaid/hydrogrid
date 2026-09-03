@@ -24,8 +24,8 @@ export function PurificationHealthChart({
       name: "1. Pre-Filtration (Sediment 5µm)",
       target: "Coal dust, suspended solids & optical turbidity",
       color: "#06b6d4", // Electric Cyan
-      health: purification?.stages[0]?.healthPercent ?? 94,
-      status: purification?.stages[0]?.status ?? "HEALTHY",
+      health: purification?.filters?.sediment?.lifePercent ?? 94,
+      status: purification?.stages?.sediment ?? "HEALTHY",
       metricLabel: "Turbidity Rejection",
       metricValue: "98.4%",
     },
@@ -34,8 +34,8 @@ export function PurificationHealthChart({
       name: "2. Chemical Adsorption (Activated Carbon)",
       target: "Mining organic chemicals, chlorine & heavy odor",
       color: "#f59e0b", // Radiant Gold
-      health: purification?.stages[1]?.healthPercent ?? 89,
-      status: purification?.stages[1]?.status ?? "HEALTHY",
+      health: purification?.filters?.carbon?.lifePercent ?? 89,
+      status: purification?.stages?.carbon ?? "HEALTHY",
       metricLabel: "Adsorption Capacity",
       metricValue: "91.2%",
     },
@@ -44,8 +44,8 @@ export function PurificationHealthChart({
       name: "3. AMD Neutralizer (Calcite/Dolomite)",
       target: "Acid Mine Drainage pH balancing & alkaline remineralization",
       color: "#10b981", // Bright Emerald
-      health: purification?.stages[2]?.healthPercent ?? 92,
-      status: purification?.stages[2]?.status ?? "HEALTHY",
+      health: purification?.filters?.calcite?.lifePercent ?? 92,
+      status: purification?.stages?.calcite ?? "HEALTHY",
       metricLabel: "Neutralization Buffer",
       metricValue: "+1.8 pH",
     },
@@ -55,14 +55,14 @@ export function PurificationHealthChart({
       target:
         "Complete pathogen eradication & waterborne microbial elimination",
       color: "#8b5cf6", // Vivid Violet
-      health: purification?.stages[3]?.healthPercent ?? 97,
-      status: purification?.stages[3]?.status ?? "HEALTHY",
+      health: purification?.filters?.uv?.lifePercent ?? 97,
+      status: purification?.stages?.uv ?? "ACTIVE",
       metricLabel: "UV-C Intensity",
       metricValue: "99.9%",
     },
   ];
 
-  const pumpRunning = (purification?.pumpStatus ?? "RUNNING") === "RUNNING";
+  const pumpRunning = (purification?.pump ?? "RUNNING") === "RUNNING";
 
   return (
     <Card className={className}>

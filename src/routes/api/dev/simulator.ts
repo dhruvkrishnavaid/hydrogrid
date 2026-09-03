@@ -12,8 +12,8 @@ import {
 import { apiError, apiSuccess } from "../../../server/utils/response";
 
 const SimulateRequestSchema = z.object({
-  siteId: z.string().uuid().optional(),
-  deviceId: z.string().uuid().optional().nullable(),
+  siteId: z.string().min(1).optional(),
+  deviceId: z.string().min(1).optional().nullable(),
   scenario: z.string(),
 });
 

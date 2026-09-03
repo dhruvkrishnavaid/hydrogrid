@@ -1,7 +1,6 @@
 import {
   IconActivity,
   IconAlertTriangle,
-  IconArrowRight,
   IconBuildingFactory2,
   IconCheck,
   IconChevronDown,
@@ -53,6 +52,7 @@ import { cn } from "@/lib/utils";
 
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth-context";
+import { FEATURES, isSensorKeyEnabled } from "../lib/feature-flags";
 import type {
   DashboardOverview,
   FlowHistoryPoint,
@@ -89,8 +89,6 @@ function DashboardPage() {
   const {
     activeSiteId,
     sites,
-    isStationEntered,
-    enterStation,
     role,
     isLoading: isAuthLoading,
     isAuthenticating,
@@ -200,85 +198,7 @@ function DashboardPage() {
     );
   }
 
-  // 3. Station Selection Gate
-  if (!isStationEntered) {
-    return (
-      <main className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6">
-        <div className="border-border/80 border-b pb-4">
-          <div className="text-xs font-bold tracking-wider text-[var(--brand-secondary)] uppercase">
-            HydroGrid Operations Console
-          </div>
-          <h1 className="font-display text-foreground mt-1 text-2xl font-bold tracking-tight">
-            Select Operational Water Station
-          </h1>
-          <p className="text-muted-foreground mt-1 text-xs">
-            Choose an active regional water treatment plant to enter the
-            real-time telemetry and quality supervision console.
-          </p>
-        </div>
-
-        <div className="grid gap-4">
-          {sites.map((site) => (
-            <Card
-              key={site.id}
-              className="transition-all hover:border-[var(--brand-secondary)] hover:shadow-md"
-            >
-              <CardHeader className="pb-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="bg-primary/10 text-primary dark:bg-primary/20 flex size-9 items-center justify-center rounded-xl">
-                      <IconBuildingFactory2 className="size-5 text-[var(--brand-secondary)]" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-foreground text-base font-bold">
-                        {site.name}
-                      </CardTitle>
-                      <CardDescription className="text-xs">
-                        {site.location ?? "Regional Facility, Tamil Nadu"}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <Badge
-                    variant={
-                      site.status === "ONLINE" ? "default" : "destructive"
-                    }
-                    className={
-                      site.status === "ONLINE"
-                        ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300"
-                        : ""
-                    }
-                  >
-                    {site.status === "ONLINE" ? "● Online" : "▲ Degraded"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="border-border/60 flex flex-wrap items-center justify-between gap-4 border-t pt-3">
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <Badge variant="outline" className="text-xs font-medium">
-                      Telemetry: Live
-                    </Badge>
-                    <Badge variant="outline" className="text-xs font-medium">
-                      Nodes: 1/1 Online
-                    </Badge>
-                  </div>
-                  <Button
-                    onClick={() => enterStation(site.id)}
-                    className="gap-1.5 font-semibold"
-                  >
-                    <span>Enter Station</span>
-                    <IconArrowRight className="size-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </main>
-    );
-  }
-
-  // 4. Loading state for telemetry inside station
+  // 3. Loading state for telemetry inside station
   if (isLoadingData && !data) {
     return <DashboardSkeleton />;
   }
@@ -362,7 +282,7 @@ function DashboardPage() {
           </div>
           <Separator orientation="vertical" className="h-4" />
           <span className="text-muted-foreground text-xs">
-            {site.location ?? "Regional Facility, Tamil Nadu"}
+            {site.location ?? "IIIT-Delhi Campus (Okhla), South East Delhi"}
           </span>
         </div>
 
@@ -555,51 +475,101 @@ function DashboardPage() {
 
       {/* 2.5 At-A-Glance Critical KPI Sparkline Cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {/* pH Potability Card */}
-        <Card className="border-border/80 overflow-hidden shadow-2xs">
-          <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
-            <div>
-              <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-                pH Potability Level
-              </CardDescription>
-              <div className="mt-0.5 flex items-baseline gap-2">
-                <span className="telemetry-val text-foreground text-xl font-black">
-                  {latestReading.ph.toFixed(2)}
-                </span>
-                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                  {latestReading.ph >= 6.5 && latestReading.ph <= 8.5
-                    ? "✓ Optimal"
-                    : "⚠ Outside Band"}
-                </span>
+        {FEATURES.ALL_SENSORS ? (
+          /* pH Potability Card (Full suite) */
+          <Card className="border-border/80 overflow-hidden shadow-2xs">
+            <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+              <div>
+                <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                  pH Potability Level
+                </CardDescription>
+                <div className="mt-0.5 flex items-baseline gap-2">
+                  <span className="telemetry-val text-foreground text-xl font-black">
+                    {latestReading.ph.toFixed(2)}
+                  </span>
+                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    {latestReading.ph >= 6.5 && latestReading.ph <= 8.5
+                      ? "✓ Optimal"
+                      : "⚠ Outside Band"}
+                  </span>
+                </div>
               </div>
-            </div>
-            <Badge
-              variant="outline"
-              className="border-emerald-500/30 bg-emerald-500/10 text-[10px] font-bold text-emerald-700 dark:text-emerald-400"
-            >
-              6.5–8.5
-            </Badge>
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <TelemetrySparkline
-              data={
-                wqHistory.length
-                  ? wqHistory.map((p) => ({ value: p.ph }))
-                  : [
-                      { value: 7.3 },
-                      { value: 7.35 },
-                      { value: 7.32 },
-                      { value: latestReading.ph },
-                    ]
-              }
-              color="#10b981"
-              gradientId="spark-ph"
-              height={36}
-            />
-          </CardContent>
-        </Card>
+              <Badge
+                variant="outline"
+                className="border-emerald-500/30 bg-emerald-500/10 text-[10px] font-bold text-emerald-700 dark:text-emerald-400"
+              >
+                6.5–8.5
+              </Badge>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <TelemetrySparkline
+                data={
+                  wqHistory.length
+                    ? wqHistory.map((p) => ({ value: p.ph }))
+                    : [
+                        { value: 7.3 },
+                        { value: 7.35 },
+                        { value: 7.32 },
+                        { value: latestReading.ph },
+                      ]
+                }
+                color="#10b981"
+                gradientId="spark-ph"
+                height={36}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          /* Water Temperature Card (Node Zero Prototype) */
+          <Card className="border-border/80 overflow-hidden shadow-2xs">
+            <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+              <div>
+                <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                  Water Temperature
+                </CardDescription>
+                <div className="mt-0.5 flex items-baseline gap-2">
+                  <span className="telemetry-val text-foreground text-xl font-black">
+                    {latestReading.temperature.toFixed(1)}{" "}
+                    <span className="text-muted-foreground text-xs font-semibold">
+                      °C
+                    </span>
+                  </span>
+                  <span className="text-[11px] font-semibold text-orange-600 dark:text-orange-400">
+                    {latestReading.temperature >= 15 &&
+                    latestReading.temperature <= 35
+                      ? "✓ Ambient Potable"
+                      : "⚠ Thermal Drift"}
+                  </span>
+                </div>
+              </div>
+              <Badge
+                variant="outline"
+                className="border-orange-500/30 bg-orange-500/10 text-[10px] font-bold text-orange-700 dark:text-orange-400"
+              >
+                15–35 °C
+              </Badge>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <TelemetrySparkline
+                data={
+                  wqHistory.length
+                    ? wqHistory.map((p) => ({ value: p.temperature }))
+                    : [
+                        { value: 23.5 },
+                        { value: 24.0 },
+                        { value: 24.2 },
+                        { value: latestReading.temperature },
+                      ]
+                }
+                color="#f97316"
+                gradientId="spark-temp"
+                height={36}
+              />
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Optical Turbidity Card */}
+        {/* Optical Turbidity Card (Active in both full & prototype) */}
         <Card className="border-border/80 overflow-hidden shadow-2xs">
           <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
             <div>
@@ -644,57 +614,106 @@ function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Total Dissolved Solids Card */}
-        <Card className="border-border/80 overflow-hidden shadow-2xs">
-          <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
-            <div>
-              <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-                Mineral TDS Load
-              </CardDescription>
-              <div className="mt-0.5 flex items-baseline gap-2">
-                <span className="telemetry-val text-foreground text-xl font-black">
-                  {Math.round(latestReading.tds)}{" "}
-                  <span className="text-muted-foreground text-xs font-semibold">
-                    ppm
+        {FEATURES.ALL_SENSORS ? (
+          /* Total Dissolved Solids Card (Full suite) */
+          <Card className="border-border/80 overflow-hidden shadow-2xs">
+            <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+              <div>
+                <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                  Mineral TDS Load
+                </CardDescription>
+                <div className="mt-0.5 flex items-baseline gap-2">
+                  <span className="telemetry-val text-foreground text-xl font-black">
+                    {Math.round(latestReading.tds)}{" "}
+                    <span className="text-muted-foreground text-xs font-semibold">
+                      ppm
+                    </span>
                   </span>
-                </span>
-                <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                  {latestReading.tds < 500 ? "✓ Safe Load" : "⚠ High Solids"}
-                </span>
+                  <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                    {latestReading.tds < 500 ? "✓ Safe Load" : "⚠ High Solids"}
+                  </span>
+                </div>
               </div>
-            </div>
-            <Badge
-              variant="outline"
-              className="border-amber-500/30 bg-amber-500/10 text-[10px] font-bold text-amber-700 dark:text-amber-400"
-            >
-              &lt; 500 ppm
-            </Badge>
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <TelemetrySparkline
-              data={
-                wqHistory.length
-                  ? wqHistory.map((p) => ({ value: p.tds }))
-                  : [
-                      { value: 150 },
-                      { value: 145 },
-                      { value: 148 },
-                      { value: latestReading.tds },
-                    ]
-              }
-              color="#f59e0b"
-              gradientId="spark-tds"
-              height={36}
-            />
-          </CardContent>
-        </Card>
+              <Badge
+                variant="outline"
+                className="border-amber-500/30 bg-amber-500/10 text-[10px] font-bold text-amber-700 dark:text-amber-400"
+              >
+                &lt; 500 ppm
+              </Badge>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <TelemetrySparkline
+                data={
+                  wqHistory.length
+                    ? wqHistory.map((p) => ({ value: p.tds }))
+                    : [
+                        { value: 150 },
+                        { value: 145 },
+                        { value: 148 },
+                        { value: latestReading.tds },
+                      ]
+                }
+                color="#f59e0b"
+                gradientId="spark-tds"
+                height={36}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          /* Intake Flow Rate Card (Node Zero Prototype) */
+          <Card className="border-border/80 overflow-hidden shadow-2xs">
+            <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+              <div>
+                <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                  Intake Flow Rate (Q₁)
+                </CardDescription>
+                <div className="mt-0.5 flex items-baseline gap-2">
+                  <span className="telemetry-val text-foreground text-xl font-black">
+                    {flow.inletFlowRate.toFixed(1)}{" "}
+                    <span className="text-muted-foreground text-xs font-semibold">
+                      L/min
+                    </span>
+                  </span>
+                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    ✓ Turbine Active
+                  </span>
+                </div>
+              </div>
+              <Badge
+                variant="outline"
+                className="border-emerald-500/30 bg-emerald-500/10 text-[10px] font-bold text-emerald-700 dark:text-emerald-400"
+              >
+                30–50 L/min
+              </Badge>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <TelemetrySparkline
+                data={
+                  flowHistory.length
+                    ? flowHistory.map((p) => ({ value: p.inletFlowRate }))
+                    : [
+                        { value: 44.5 },
+                        { value: 45.0 },
+                        { value: 45.2 },
+                        { value: flow.inletFlowRate },
+                      ]
+                }
+                color="#10b981"
+                gradientId="spark-inlet-flow"
+                height={36}
+              />
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Differential Flow Mismatch Card */}
+        {/* Differential Flow Mismatch & Shutoff Valve Card */}
         <Card className="border-border/80 overflow-hidden shadow-2xs">
           <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
             <div>
               <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-                Differential Flow Mismatch
+                {FEATURES.ALL_SENSORS
+                  ? "Differential Flow Mismatch"
+                  : "Leak Detection & Solenoid Valve"}
               </CardDescription>
               <div className="mt-0.5 flex items-baseline gap-2">
                 <span
@@ -713,7 +732,9 @@ function DashboardPage() {
                       : "text-emerald-600 dark:text-emerald-400"
                   }`}
                 >
-                  {isLeak ? "⚠ Leak Active" : "✓ No Loss"}
+                  {isLeak
+                    ? "⚠ Leak (Valve Closed)"
+                    : `✓ Valve ${flow.valveStatus}`}
                 </span>
               </div>
             </div>
@@ -767,10 +788,12 @@ function DashboardPage() {
       </div>
 
       {/* 2.7 4-Stage Purification Multi-Barrier Performance */}
-      <PurificationHealthChart
-        purification={data.purification}
-        className="shadow-2xs"
-      />
+      {FEATURES.PURIFICATION && (
+        <PurificationHealthChart
+          purification={data.purification}
+          className="shadow-2xs"
+        />
+      )}
 
       {/* 3. Operational Lifecycle & Verification Chain */}
       <Card className="shadow-2xs">
@@ -812,33 +835,36 @@ function DashboardPage() {
                     : "text-rose-600 dark:text-rose-400"
                 }`}
               >
-                9 Channels {isGatePass ? "✓" : "▲"}
+                {FEATURES.ALL_SENSORS ? "9 Channels" : "3 Sensors"}{" "}
+                {isGatePass ? "✓" : "▲"}
               </span>
               <span className="text-muted-foreground block text-[11px]">
                 Physicochemical
               </span>
             </Link>
 
-            <Link
-              to="/purification"
-              className="group border-border/80 bg-muted/40 hover:bg-muted/70 block space-y-1 rounded-xl border p-3 transition hover:border-[var(--brand-secondary)]"
-            >
-              <span className="text-muted-foreground block text-[10px] font-bold uppercase">
-                3. Treatment
-              </span>
-              <span
-                className={`block text-xs font-bold ${
-                  purification.mode === "NORMAL"
-                    ? "text-emerald-700 dark:text-emerald-400"
-                    : "text-amber-600 dark:text-amber-400"
-                }`}
+            {FEATURES.PURIFICATION && (
+              <Link
+                to="/purification"
+                className="group border-border/80 bg-muted/40 hover:bg-muted/70 block space-y-1 rounded-xl border p-3 transition hover:border-[var(--brand-secondary)]"
               >
-                4 Stages {purification.mode === "NORMAL" ? "✓" : "◆"}
-              </span>
-              <span className="text-muted-foreground block text-[11px]">
-                Filtration train
-              </span>
-            </Link>
+                <span className="text-muted-foreground block text-[10px] font-bold uppercase">
+                  3. Treatment
+                </span>
+                <span
+                  className={`block text-xs font-bold ${
+                    purification.mode === "NORMAL"
+                      ? "text-emerald-700 dark:text-emerald-400"
+                      : "text-amber-600 dark:text-amber-400"
+                  }`}
+                >
+                  4 Stages {purification.mode === "NORMAL" ? "✓" : "◆"}
+                </span>
+                <span className="text-muted-foreground block text-[11px]">
+                  Filtration train
+                </span>
+              </Link>
+            )}
 
             <Link
               to="/flow"
@@ -987,62 +1013,66 @@ function DashboardPage() {
           </CardFooter>
         </Card>
 
-        {/* Purification Card */}
-        <Card className="flex flex-col justify-between shadow-2xs transition-all hover:border-[var(--brand-secondary)]">
-          <CardHeader className="p-4 pb-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <IconFilter className="size-4 text-emerald-600 dark:text-emerald-400" />
-                <CardTitle className="text-foreground text-sm font-bold">
-                  Purification
-                </CardTitle>
+        {/* Purification Card (Hidden under feature flag in prototype profile) */}
+        {FEATURES.PURIFICATION && (
+          <Card className="flex flex-col justify-between shadow-2xs transition-all hover:border-[var(--brand-secondary)]">
+            <CardHeader className="p-4 pb-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <IconFilter className="size-4 text-emerald-600 dark:text-emerald-400" />
+                  <CardTitle className="text-foreground text-sm font-bold">
+                    Purification
+                  </CardTitle>
+                </div>
+                <Badge
+                  variant={
+                    purification.mode === "NORMAL" ? "default" : "secondary"
+                  }
+                  className={
+                    purification.mode === "NORMAL"
+                      ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300"
+                      : ""
+                  }
+                >
+                  {purification.mode}
+                </Badge>
               </div>
-              <Badge
-                variant={
-                  purification.mode === "NORMAL" ? "default" : "secondary"
-                }
-                className={
-                  purification.mode === "NORMAL"
-                    ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300"
-                    : ""
-                }
+              <CardDescription className="text-xs">
+                4 sequential physical, chemical, and UV-C stages with active
+                media lifecycle monitoring.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="text-muted-foreground text-xs font-medium">
+                <span>
+                  Carbon Filter{" "}
+                  <strong className="telemetry-val text-foreground">
+                    {purification.filters.carbon.lifePercent}%
+                  </strong>
+                </span>{" "}
+                ·{" "}
+                <span>
+                  Pump{" "}
+                  <strong className="text-foreground">
+                    {purification.pump}
+                  </strong>
+                </span>
+              </div>
+            </CardContent>
+            <CardFooter className="border-border/60 border-t p-3 pt-2">
+              <Link
+                to="/purification"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "sm" }),
+                  "hover:text-foreground w-full justify-between px-2 text-xs font-semibold text-[var(--brand-secondary)]",
+                )}
               >
-                {purification.mode}
-              </Badge>
-            </div>
-            <CardDescription className="text-xs">
-              4 sequential physical, chemical, and UV-C stages with active media
-              lifecycle monitoring.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="text-muted-foreground text-xs font-medium">
-              <span>
-                Carbon Filter{" "}
-                <strong className="telemetry-val text-foreground">
-                  {purification.filters.carbon.lifePercent}%
-                </strong>
-              </span>{" "}
-              ·{" "}
-              <span>
-                Pump{" "}
-                <strong className="text-foreground">{purification.pump}</strong>
-              </span>
-            </div>
-          </CardContent>
-          <CardFooter className="border-border/60 border-t p-3 pt-2">
-            <Link
-              to="/purification"
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "sm" }),
-                "hover:text-foreground w-full justify-between px-2 text-xs font-semibold text-[var(--brand-secondary)]",
-              )}
-            >
-              <span>Inspect Stages</span>
-              <IconChevronRight className="size-3.5" />
-            </Link>
-          </CardFooter>
-        </Card>
+                <span>Inspect Stages</span>
+                <IconChevronRight className="size-3.5" />
+              </Link>
+            </CardFooter>
+          </Card>
+        )}
 
         {/* Hydraulics Card */}
         <Card className="flex flex-col justify-between shadow-2xs transition-all hover:border-[var(--brand-secondary)]">
@@ -1150,10 +1180,14 @@ function DashboardPage() {
         <div className="flex items-center justify-between p-4 pb-3">
           <div>
             <h2 className="text-foreground text-sm font-bold tracking-tight">
-              Detailed Sensor Channels (9 Ingestion Probes)
+              {FEATURES.ALL_SENSORS
+                ? "Detailed Sensor Channels (9 Ingestion Probes)"
+                : "Active Prototype Sensor Channels (Node Zero)"}
             </h2>
             <p className="text-muted-foreground text-xs">
-              Calibrated physicochemical readings from edge microcontroller node
+              {FEATURES.ALL_SENSORS
+                ? "Calibrated physicochemical readings from edge microcontroller node"
+                : "Calibrated readings from physical Turbidity, Temperature, and Flow sensors (IIITD deployment)"}
             </p>
           </div>
           <CollapsibleTrigger
@@ -1184,357 +1218,379 @@ function DashboardPage() {
             </TableHeader>
             <TableBody>
               {/* pH */}
-              <TableRow className="hover:bg-muted/30">
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="ring-background size-2 rounded-full bg-emerald-500 ring-2" />
-                    <span className="text-foreground font-bold">
-                      pH Acidity
+              {isSensorKeyEnabled("ph") && (
+                <TableRow className="hover:bg-muted/30">
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="ring-background size-2 rounded-full bg-emerald-500 ring-2" />
+                      <span className="text-foreground font-bold">
+                        pH Acidity
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="telemetry-val text-foreground text-sm font-black">
+                      {latestReading.ph.toFixed(2)}
                     </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <span className="telemetry-val text-foreground text-sm font-black">
-                    {latestReading.ph.toFixed(2)}
-                  </span>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-xs">
-                  6.50 – 8.50 pH
-                </TableCell>
-                <TableCell className="text-right">
-                  <Badge
-                    variant={
-                      latestReading.ph >= 6.5 && latestReading.ph <= 8.5
-                        ? "outline"
-                        : "destructive"
-                    }
-                    className={
-                      latestReading.ph >= 6.5 && latestReading.ph <= 8.5
-                        ? "border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
-                        : "font-semibold"
-                    }
-                  >
-                    <span
-                      className={`mr-1.5 size-1.5 rounded-full ${
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    6.50 – 8.50 pH
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Badge
+                      variant={
                         latestReading.ph >= 6.5 && latestReading.ph <= 8.5
-                          ? "animate-pulse bg-emerald-500"
-                          : "bg-red-500"
-                      }`}
-                    />
-                    {latestReading.ph >= 6.5 && latestReading.ph <= 8.5
-                      ? "Normal"
-                      : "Out of Range"}
-                  </Badge>
-                </TableCell>
-              </TableRow>
+                          ? "outline"
+                          : "destructive"
+                      }
+                      className={
+                        latestReading.ph >= 6.5 && latestReading.ph <= 8.5
+                          ? "border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                          : "font-semibold"
+                      }
+                    >
+                      <span
+                        className={`mr-1.5 size-1.5 rounded-full ${
+                          latestReading.ph >= 6.5 && latestReading.ph <= 8.5
+                            ? "animate-pulse bg-emerald-500"
+                            : "bg-red-500"
+                        }`}
+                      />
+                      {latestReading.ph >= 6.5 && latestReading.ph <= 8.5
+                        ? "Normal"
+                        : "Out of Range"}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              )}
 
               {/* Turbidity */}
-              <TableRow className="hover:bg-muted/30">
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="ring-background size-2 rounded-full bg-cyan-500 ring-2" />
-                    <span className="text-foreground font-bold">Turbidity</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-baseline gap-1">
-                    <span className="telemetry-val text-foreground text-sm font-black">
-                      {latestReading.turbidity.toFixed(1)}
-                    </span>
-                    <span className="text-muted-foreground text-xs font-medium">
-                      NTU
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-xs">
-                  Max 5.0 NTU
-                </TableCell>
-                <TableCell className="text-right">
-                  <Badge
-                    variant={
-                      latestReading.turbidity <= 5.0 ? "outline" : "destructive"
-                    }
-                    className={
-                      latestReading.turbidity <= 5.0
-                        ? "border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
-                        : "font-semibold"
-                    }
-                  >
-                    <span
-                      className={`mr-1.5 size-1.5 rounded-full ${
+              {isSensorKeyEnabled("turbidity") && (
+                <TableRow className="hover:bg-muted/30">
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="ring-background size-2 rounded-full bg-cyan-500 ring-2" />
+                      <span className="text-foreground font-bold">
+                        Turbidity
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-baseline gap-1">
+                      <span className="telemetry-val text-foreground text-sm font-black">
+                        {latestReading.turbidity.toFixed(1)}
+                      </span>
+                      <span className="text-muted-foreground text-xs font-medium">
+                        NTU
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    Max 5.0 NTU
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Badge
+                      variant={
                         latestReading.turbidity <= 5.0
-                          ? "animate-pulse bg-emerald-500"
-                          : "bg-red-500"
-                      }`}
-                    />
-                    {latestReading.turbidity <= 5.0 ? "Normal" : "Exceeded"}
-                  </Badge>
-                </TableCell>
-              </TableRow>
+                          ? "outline"
+                          : "destructive"
+                      }
+                      className={
+                        latestReading.turbidity <= 5.0
+                          ? "border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                          : "font-semibold"
+                      }
+                    >
+                      <span
+                        className={`mr-1.5 size-1.5 rounded-full ${
+                          latestReading.turbidity <= 5.0
+                            ? "animate-pulse bg-emerald-500"
+                            : "bg-red-500"
+                        }`}
+                      />
+                      {latestReading.turbidity <= 5.0 ? "Normal" : "Exceeded"}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              )}
 
               {/* Heavy Metals */}
-              <TableRow className="hover:bg-muted/30">
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="ring-background size-2 rounded-full bg-rose-500 ring-2" />
-                    <span className="text-foreground font-bold">
-                      Heavy Metals (Lead/Cadmium)
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-baseline gap-1">
-                    <span className="telemetry-val text-foreground text-sm font-black">
-                      {latestReading.heavyMetals.toFixed(2)}
-                    </span>
-                    <span className="text-muted-foreground text-xs font-medium">
-                      ppm
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-xs">
-                  Max 0.10 ppm
-                </TableCell>
-                <TableCell className="text-right">
-                  <Badge
-                    variant={
-                      latestReading.heavyMetals <= 0.1
-                        ? "outline"
-                        : "destructive"
-                    }
-                    className={
-                      latestReading.heavyMetals <= 0.1
-                        ? "border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
-                        : "font-semibold"
-                    }
-                  >
-                    <span
-                      className={`mr-1.5 size-1.5 rounded-full ${
+              {isSensorKeyEnabled("heavyMetals") && (
+                <TableRow className="hover:bg-muted/30">
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="ring-background size-2 rounded-full bg-rose-500 ring-2" />
+                      <span className="text-foreground font-bold">
+                        Heavy Metals (Lead/Cadmium)
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-baseline gap-1">
+                      <span className="telemetry-val text-foreground text-sm font-black">
+                        {latestReading.heavyMetals.toFixed(2)}
+                      </span>
+                      <span className="text-muted-foreground text-xs font-medium">
+                        ppm
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    Max 0.10 ppm
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Badge
+                      variant={
                         latestReading.heavyMetals <= 0.1
-                          ? "animate-pulse bg-emerald-500"
-                          : "bg-red-500"
-                      }`}
-                    />
-                    {latestReading.heavyMetals <= 0.1 ? "Normal" : "Hazard"}
-                  </Badge>
-                </TableCell>
-              </TableRow>
+                          ? "outline"
+                          : "destructive"
+                      }
+                      className={
+                        latestReading.heavyMetals <= 0.1
+                          ? "border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                          : "font-semibold"
+                      }
+                    >
+                      <span
+                        className={`mr-1.5 size-1.5 rounded-full ${
+                          latestReading.heavyMetals <= 0.1
+                            ? "animate-pulse bg-emerald-500"
+                            : "bg-red-500"
+                        }`}
+                      />
+                      {latestReading.heavyMetals <= 0.1 ? "Normal" : "Hazard"}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              )}
 
               {/* TDS */}
-              <TableRow className="hover:bg-muted/30">
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="ring-background size-2 rounded-full bg-amber-500 ring-2" />
-                    <span className="text-foreground font-bold">
-                      Total Dissolved Solids (TDS)
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-baseline gap-1">
-                    <span className="telemetry-val text-foreground text-sm font-black">
-                      {latestReading.tds.toFixed(0)}
-                    </span>
-                    <span className="text-muted-foreground text-xs font-medium">
-                      ppm
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-xs">
-                  Max 500 ppm
-                </TableCell>
-                <TableCell className="text-right">
-                  <Badge
-                    variant={
-                      latestReading.tds <= 500 ? "outline" : "destructive"
-                    }
-                    className={
-                      latestReading.tds <= 500
-                        ? "border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
-                        : "font-semibold"
-                    }
-                  >
-                    <span
-                      className={`mr-1.5 size-1.5 rounded-full ${
+              {isSensorKeyEnabled("tds") && (
+                <TableRow className="hover:bg-muted/30">
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="ring-background size-2 rounded-full bg-amber-500 ring-2" />
+                      <span className="text-foreground font-bold">
+                        Total Dissolved Solids (TDS)
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-baseline gap-1">
+                      <span className="telemetry-val text-foreground text-sm font-black">
+                        {latestReading.tds.toFixed(0)}
+                      </span>
+                      <span className="text-muted-foreground text-xs font-medium">
+                        ppm
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    Max 500 ppm
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Badge
+                      variant={
+                        latestReading.tds <= 500 ? "outline" : "destructive"
+                      }
+                      className={
                         latestReading.tds <= 500
-                          ? "animate-pulse bg-emerald-500"
-                          : "bg-red-500"
-                      }`}
-                    />
-                    {latestReading.tds <= 500 ? "Normal" : "Exceeded"}
-                  </Badge>
-                </TableCell>
-              </TableRow>
+                          ? "border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                          : "font-semibold"
+                      }
+                    >
+                      <span
+                        className={`mr-1.5 size-1.5 rounded-full ${
+                          latestReading.tds <= 500
+                            ? "animate-pulse bg-emerald-500"
+                            : "bg-red-500"
+                        }`}
+                      />
+                      {latestReading.tds <= 500 ? "Normal" : "Exceeded"}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              )}
 
               {/* Dissolved Oxygen */}
-              <TableRow className="hover:bg-muted/30">
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="ring-background size-2 rounded-full bg-violet-500 ring-2" />
-                    <span className="text-foreground font-bold">
-                      Dissolved Oxygen
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-baseline gap-1">
-                    <span className="telemetry-val text-foreground text-sm font-black">
-                      {latestReading.dissolvedOxygen.toFixed(1)}
-                    </span>
-                    <span className="text-muted-foreground text-xs font-medium">
-                      mg/L
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-xs">
-                  &gt; 6.5 mg/L
-                </TableCell>
-                <TableCell className="text-right">
-                  <Badge
-                    variant="outline"
-                    className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
-                  >
-                    <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
-                    Normal
-                  </Badge>
-                </TableCell>
-              </TableRow>
+              {isSensorKeyEnabled("dissolvedOxygen") && (
+                <TableRow className="hover:bg-muted/30">
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="ring-background size-2 rounded-full bg-violet-500 ring-2" />
+                      <span className="text-foreground font-bold">
+                        Dissolved Oxygen
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-baseline gap-1">
+                      <span className="telemetry-val text-foreground text-sm font-black">
+                        {latestReading.dissolvedOxygen.toFixed(1)}
+                      </span>
+                      <span className="text-muted-foreground text-xs font-medium">
+                        mg/L
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    &gt; 6.5 mg/L
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                    >
+                      <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                      Normal
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              )}
 
               {/* Electrical Conductivity */}
-              <TableRow className="hover:bg-muted/30">
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="ring-background size-2 rounded-full bg-blue-500 ring-2" />
-                    <span className="text-foreground font-bold">
-                      Electrical Conductivity
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-baseline gap-1">
-                    <span className="telemetry-val text-foreground text-sm font-black">
-                      {latestReading.electricalConductivity.toFixed(0)}
-                    </span>
-                    <span className="text-muted-foreground text-xs font-medium">
-                      µS/cm
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-xs">
-                  Observational
-                </TableCell>
-                <TableCell className="text-right">
-                  <Badge
-                    variant="outline"
-                    className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
-                  >
-                    <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
-                    Normal
-                  </Badge>
-                </TableCell>
-              </TableRow>
+              {isSensorKeyEnabled("electricalConductivity") && (
+                <TableRow className="hover:bg-muted/30">
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="ring-background size-2 rounded-full bg-blue-500 ring-2" />
+                      <span className="text-foreground font-bold">
+                        Electrical Conductivity
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-baseline gap-1">
+                      <span className="telemetry-val text-foreground text-sm font-black">
+                        {latestReading.electricalConductivity.toFixed(0)}
+                      </span>
+                      <span className="text-muted-foreground text-xs font-medium">
+                        µS/cm
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    Observational
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                    >
+                      <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                      Normal
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              )}
 
               {/* Total Hardness */}
-              <TableRow className="hover:bg-muted/30">
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="ring-background size-2 rounded-full bg-purple-500 ring-2" />
-                    <span className="text-foreground font-bold">
-                      Total Hardness
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-baseline gap-1">
-                    <span className="telemetry-val text-foreground text-sm font-black">
-                      {latestReading.hardness.toFixed(0)}
-                    </span>
-                    <span className="text-muted-foreground text-xs font-medium">
-                      mg/L
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-xs">
-                  Max 300 mg/L
-                </TableCell>
-                <TableCell className="text-right">
-                  <Badge
-                    variant="outline"
-                    className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
-                  >
-                    <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
-                    Normal
-                  </Badge>
-                </TableCell>
-              </TableRow>
+              {isSensorKeyEnabled("hardness") && (
+                <TableRow className="hover:bg-muted/30">
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="ring-background size-2 rounded-full bg-purple-500 ring-2" />
+                      <span className="text-foreground font-bold">
+                        Total Hardness
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-baseline gap-1">
+                      <span className="telemetry-val text-foreground text-sm font-black">
+                        {latestReading.hardness.toFixed(0)}
+                      </span>
+                      <span className="text-muted-foreground text-xs font-medium">
+                        mg/L
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    Max 300 mg/L
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                    >
+                      <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                      Normal
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              )}
 
               {/* Water Temperature */}
-              <TableRow className="hover:bg-muted/30">
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="ring-background size-2 rounded-full bg-orange-500 ring-2" />
-                    <span className="text-foreground font-bold">
-                      Water Temperature
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-baseline gap-1">
-                    <span className="telemetry-val text-foreground text-sm font-black">
-                      {latestReading.temperature.toFixed(1)}
-                    </span>
-                    <span className="text-muted-foreground text-xs font-medium">
-                      °C
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-xs">
-                  15.0 – 35.0 °C
-                </TableCell>
-                <TableCell className="text-right">
-                  <Badge
-                    variant="outline"
-                    className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
-                  >
-                    <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
-                    Normal
-                  </Badge>
-                </TableCell>
-              </TableRow>
+              {isSensorKeyEnabled("temperature") && (
+                <TableRow className="hover:bg-muted/30">
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="ring-background size-2 rounded-full bg-orange-500 ring-2" />
+                      <span className="text-foreground font-bold">
+                        Water Temperature
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-baseline gap-1">
+                      <span className="telemetry-val text-foreground text-sm font-black">
+                        {latestReading.temperature.toFixed(1)}
+                      </span>
+                      <span className="text-muted-foreground text-xs font-medium">
+                        °C
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    15.0 – 35.0 °C
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                    >
+                      <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                      Normal
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              )}
 
               {/* Discharge Flow */}
-              <TableRow className="hover:bg-muted/30">
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="ring-background size-2 rounded-full bg-teal-500 ring-2" />
-                    <span className="text-foreground font-bold">
-                      Intake Discharge Flow
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-baseline gap-1">
-                    <span className="telemetry-val text-foreground text-sm font-black">
-                      {latestReading.flowRate.toFixed(1)}
-                    </span>
-                    <span className="text-muted-foreground text-xs font-medium">
-                      L/min
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-xs">
-                  Rated 45.0 L/min
-                </TableCell>
-                <TableCell className="text-right">
-                  <Badge
-                    variant="outline"
-                    className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
-                  >
-                    <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
-                    Normal
-                  </Badge>
-                </TableCell>
-              </TableRow>
+              {isSensorKeyEnabled("flowRate") && (
+                <TableRow className="hover:bg-muted/30">
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="ring-background size-2 rounded-full bg-teal-500 ring-2" />
+                      <span className="text-foreground font-bold">
+                        Intake Discharge Flow
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-baseline gap-1">
+                      <span className="telemetry-val text-foreground text-sm font-black">
+                        {latestReading.flowRate.toFixed(1)}
+                      </span>
+                      <span className="text-muted-foreground text-xs font-medium">
+                        L/min
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    Rated 45.0 L/min
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                    >
+                      <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                      Normal
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CollapsibleContent>

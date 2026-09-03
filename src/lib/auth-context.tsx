@@ -60,6 +60,17 @@ export const DEMO_CREDENTIALS: Record<
   },
 };
 
+export const DEFAULT_DEMO_SITE_ID = "00000000-0000-0000-0000-000000000001";
+
+const DEFAULT_FALLBACK_SITE: SiteRecord = {
+  id: DEFAULT_DEMO_SITE_ID,
+  name: "Node Zero — IIITD Pilot",
+  location: "IIIT-Delhi Campus (Okhla), South East Delhi",
+  status: "ONLINE",
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -85,19 +96,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [sites, setSites] = useState<Array<SiteRecord>>([]);
   const [activeSiteId, setActiveSiteIdState] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
-      return window.localStorage.getItem("hydrogrid_active_station_id");
-    }
-    return null;
-  });
-
-  const [isStationEntered, setIsStationEntered] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
       return (
-        window.localStorage.getItem("hydrogrid_station_entered") === "true"
+        window.localStorage.getItem("hydrogrid_active_station_id") ||
+        DEFAULT_DEMO_SITE_ID
       );
     }
-    return false;
+    return DEFAULT_DEMO_SITE_ID;
   });
+
+  // Edge mode: station is always entered directly without blocking gate screens
+  const [isStationEntered, setIsStationEntered] = useState<boolean>(true);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
@@ -242,12 +250,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(null);
     setStoredToken(null);
     setSites([]);
-    setActiveSiteIdState(null);
-    setIsStationEntered(false);
+    setActiveSiteIdState(DEFAULT_DEMO_SITE_ID);
+    setIsStationEntered(true);
     if (typeof window !== "undefined") {
       window.localStorage.removeItem("hydrogrid_auth_user");
       window.localStorage.removeItem("hydrogrid_active_station_id");
-      window.localStorage.removeItem("hydrogrid_station_entered");
+      window.localStorage.setItem("hydrogrid_station_entered", "true");
     }
     const supabase = getSupabaseBrowserClient();
     supabase.auth.signOut().catch(() => {});
@@ -269,15 +277,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const exitStation = () => {
-    setIsStationEntered(false);
+    // Edge mode: Station remains entered to prevent blocking gate screen
+    setIsStationEntered(true);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem("hydrogrid_station_entered", "false");
+      window.localStorage.setItem("hydrogrid_station_entered", "true");
     }
   };
 
   const activeSite =
     sites.find((s) => s.id === activeSiteId) ??
-    (sites.length > 0 ? sites[0] : null);
+    (sites.length > 0 ? sites[0] : DEFAULT_FALLBACK_SITE);
 
   return (
     <AuthContext.Provider

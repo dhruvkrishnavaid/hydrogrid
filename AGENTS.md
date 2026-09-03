@@ -3,8 +3,8 @@
 ## 1. Project Context & Identity
 
 - **Project Name:** HydroGrid
-- **Product:** Smart Water Purification and Quality Monitoring System
-- **Problem Statement:** PS 26040
+- **System Nature:** Standalone system engineered to **REPLACE traditional SCADA**, consisting of offline decision-making capable edge nodes for rural and mining-affected areas.
+- **Problem Statement:** PS 26040 (Smart Water Purification and Quality Monitoring System for Rural and Mining-Affected Areas - Government of Jharkhand)
 - **Core Stack:** TanStack Start, React, Vite, TypeScript, Tailwind CSS
 - **Package Manager/Runtime:** Bun
 - **UI Library:** shadcn/ui
@@ -14,9 +14,9 @@
 - **Relational Database:** PostgreSQL via Supabase
 - **Time-Series Database:** InfluxDB
 
-The physical ESP32/Raspberry Pi hardware is NOT implemented in this repository.
+The system operates autonomously at the edge (Quality Gatekeeper with automated 12V solenoid shutoff valve, 15% differential flow leak detection, 4-stage purification with Calcite/Dolomite AMD neutralization, and local SQLite offline buffering).
 
-For the MVP, a backend simulator will act as the hardware/data source.
+The physical ESP32/Raspberry Pi hardware is NOT implemented in this repository; a backend simulator acts as the hardware/data source for the software demonstration.
 
 ---
 
@@ -33,6 +33,7 @@ These documents define the finalized HydroGrid MVP contract.
 ### Documentation hierarchy
 
 `docs/backend-mvp.md`
+
 - Defines the frozen MVP scope
 - Defines required features
 - Defines demo workflow
@@ -40,12 +41,14 @@ These documents define the finalized HydroGrid MVP contract.
 - Defines what is explicitly out of scope
 
 `docs/backend-detailed.md`
+
 - Defines detailed backend architecture
 - Defines backend implementation requirements
 - Defines domain behavior
 - Defines API/data contracts
 
 `docs/frontend-integration.md`
+
 - Defines what the frontend expects from the backend
 - Defines API integration requirements
 - Defines frontend-facing data contracts
@@ -53,6 +56,7 @@ These documents define the finalized HydroGrid MVP contract.
 If documentation conflicts with existing implementation code, the documentation defines the intended system.
 
 Do not silently invent or change:
+
 - API routes
 - Water-quality parameters
 - Quality Gate rules
@@ -79,6 +83,7 @@ Use development, type-checking, linting, and targeted runtime tests instead.
 When implementing a large feature, divide the work logically.
 
 Possible personas:
+
 - **UI Agent:** Frontend components and pages
 - **API Agent:** TanStack Start server routes
 - **Backend Infrastructure Agent:** Database, configuration, logging, validation
@@ -92,6 +97,7 @@ Do not create unnecessary sub-agents for trivial changes.
 This repository contains the web application.
 
 Do NOT implement:
+
 - ESP32 C++
 - Raspberry Pi hardware Python
 - LoRaWAN firmware
@@ -107,6 +113,7 @@ Hardware will eventually replace the simulator as the data source.
 HydroGrid uses a **single-server TanStack Start architecture**.
 
 Do NOT create:
+
 - Express server
 - NestJS application
 - Separate backend repository
@@ -118,16 +125,19 @@ The backend remains inside the existing TanStack Start application.
 ### Backend structure
 
 Server API routes:
+
 ```text
 src/routes/api/
 ```
 
 Server-only infrastructure:
+
 ```text
 src/server/
 ```
 
 Shared schemas/types:
+
 ```text
 src/lib/
 ```
@@ -141,11 +151,13 @@ Only place code in `src/lib/` when it genuinely needs to be shared between front
 ### Runtime
 
 Use:
+
 ```text
 Bun
 ```
 
 Never use:
+
 ```text
 npm
 pnpm
@@ -155,6 +167,7 @@ yarn
 ### API
 
 Use TanStack Start API routes:
+
 ```ts
 import { json } from "@tanstack/react-start";
 import { createAPIFileRoute } from "@tanstack/react-start/api";
@@ -167,6 +180,7 @@ Do NOT use Express-style route handlers.
 Supabase Auth is the authentication provider.
 
 Do NOT implement custom:
+
 - JWT authentication
 - password authentication
 - session management
@@ -177,11 +191,13 @@ unless explicitly required by the finalized documentation.
 ### Database
 
 Relational application data:
+
 ```text
 Supabase PostgreSQL
 ```
 
 Time-series telemetry:
+
 ```text
 InfluxDB
 ```
@@ -193,9 +209,11 @@ SQLite is NOT part of the finalized MVP architecture.
 ### Validation
 
 Use:
+
 ```text
 Zod
 ```
+
 for request and configuration validation.
 
 ---
@@ -221,6 +239,7 @@ Do not introduce additional water-quality parameters without updating the finali
 Electrical Conductivity (EC) is an MVP supporting/observational parameter.
 
 EC:
+
 - Must be stored
 - Must be available to the frontend
 - Should be displayed alongside TDS
@@ -235,6 +254,7 @@ Do not invent an EC safety threshold.
 ## 7. Backend Responsibilities
 
 The backend MVP is responsible for:
+
 - Water-quality monitoring
 - Water Safety Score
 - Water Safety status
@@ -252,6 +272,7 @@ The backend MVP is responsible for:
 - Hardware simulation
 
 The detailed behavior is defined in:
+
 ```text
 docs/backend-detailed.md
 ```
@@ -277,6 +298,7 @@ Frontend
 The simulator must behave as a temporary hardware/data source.
 
 It must support the scenarios defined in:
+
 ```text
 docs/backend-mvp.md
 ```
@@ -284,6 +306,7 @@ docs/backend-mvp.md
 The simulator is NOT throwaway code.
 
 When physical hardware becomes available:
+
 ```text
 Simulator
     ↓
@@ -299,11 +322,13 @@ The rest of the backend workflow should remain unchanged.
 ## 9. API Route Rules
 
 All backend API routes belong under:
+
 ```text
 src/routes/api/
 ```
 
 Use:
+
 ```ts
 createAPIFileRoute(...)
 ```
@@ -311,6 +336,7 @@ createAPIFileRoute(...)
 Do not create duplicate API mechanisms.
 
 Before creating a new route:
+
 1. Check `docs/backend-detailed.md`
 2. Check existing API routes
 3. Confirm that the route belongs to the frozen MVP
@@ -325,12 +351,14 @@ Do not invent routes for convenience.
 All APIs must use consistent response structures.
 
 Errors must be:
+
 - predictable
 - machine-readable
 - safe for frontend consumption
 - free of secrets or internal credentials
 
 Do not expose:
+
 - API keys
 - database credentials
 - Supabase secrets
@@ -344,12 +372,14 @@ Do not expose:
 Never hardcode secrets.
 
 Use environment variables for:
+
 - Supabase configuration
 - PostgreSQL configuration where required
 - InfluxDB configuration
 - Other external service credentials
 
 Maintain:
+
 ```text
 .env.example
 ```
@@ -365,6 +395,7 @@ Never commit real credentials.
 Backend logging must be structured and useful for debugging.
 
 Do not log:
+
 - passwords
 - access tokens
 - API keys
@@ -372,6 +403,7 @@ Do not log:
 - sensitive user information
 
 Prefer meaningful events such as:
+
 ```text
 API request
 Telemetry ingestion
@@ -387,6 +419,7 @@ External service failure
 ## 13. UI / UX Rules
 
 HydroGrid uses:
+
 ```text
 shadcn/ui
 Tailwind CSS
@@ -394,11 +427,13 @@ TanStack Router
 ```
 
 Keep components under:
+
 ```text
 src/components/
 ```
 
 Keep routes under:
+
 ```text
 src/routes/
 ```
@@ -424,18 +459,23 @@ Do not hardcode colors when existing CSS variables should be used.
 
 ---
 
-## 15. Naming
+## 15. Naming & Positioning
 
-The project is named:
+The project is strictly named:
+
 ```text
 HydroGrid
 ```
 
-Do not use:
-```text
-JalRakshak
-```
-in application code, UI, API responses, or documentation unless explicitly required by the finalized documentation.
+Do NOT use:
+
+- `JalRakshak`
+- `SCADA Demo` / `SCADA Monitor` / `SCADA System`
+- Any other alternative name
+
+in application code, UI, API responses, commits, or documentation.
+
+HydroGrid is NOT a SCADA demo or SCADA-compatible API. It is a standalone, offline-first system engineered to **REPLACE traditional SCADA**, utilizing decentralized edge nodes capable of autonomous local decision making.
 
 ---
 
@@ -464,6 +504,7 @@ Never claim something works without actually validating it.
 ## 17. Do Not Over-Engineer
 
 Avoid premature:
+
 - microservices
 - repository abstractions
 - event buses
@@ -485,6 +526,7 @@ Do NOT implement the entire backend in one step.
 Implement backend milestones incrementally.
 
 Each milestone must:
+
 1. Have a clearly defined scope
 2. Modify only necessary files
 3. Be validated independently
@@ -498,12 +540,15 @@ Do not expand scope without explicit instruction.
 ## 19. Build Restriction
 
 Never run:
+
 ```bash
 bun run build
 ```
+
 or any equivalent production build command.
 
 Allowed validation includes:
+
 ```bash
 bun run check
 bun run lint

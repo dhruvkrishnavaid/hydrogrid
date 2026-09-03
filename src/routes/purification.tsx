@@ -1,6 +1,29 @@
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconDroplet,
+  IconFilter,
+  IconFlask,
+  IconInfoCircle,
+  IconLoader2,
+  IconSun,
+} from "@tabler/icons-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+
+import { PurificationEfficiencyChart } from "../components/charts/PurificationEfficiencyChart";
+import { PurificationTrajectoryChart } from "../components/charts/PurificationTrajectoryChart";
 import { NoStationSelected } from "../components/NoStationSelected";
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth-context";
@@ -47,6 +70,7 @@ function PurificationPage() {
       key: "sediment" as const,
       step: 1,
       name: "Sediment Pre-Filter",
+      icon: IconFilter,
       tech: "5-Micron Spun Polypropylene Matrix",
       action: "Mechanical Micro-Filtration",
       desc: "Captures physical particulate matter, rust particles, sand, and suspended silt down to 5 microns, protecting downstream carbon media beds from mechanical fouling.",
@@ -56,6 +80,7 @@ function PurificationPage() {
       key: "carbon" as const,
       step: 2,
       name: "Activated Carbon Bed",
+      icon: IconDroplet,
       tech: "High-Porosity Granular Activated Carbon (GAC)",
       action: "Chemical Adsorption",
       desc: "Adsorbs heavy metals (Lead, Cadmium, Arsenic), free chlorine, volatile organic compounds (VOCs), and agricultural pesticides via surface micropore electrostatic attraction.",
@@ -65,6 +90,7 @@ function PurificationPage() {
       key: "calcite" as const,
       step: 3,
       name: "Calcite Remineralizer",
+      icon: IconFlask,
       tech: "High-Purity Calcium Carbonate Media",
       action: "Alkaline pH Stabilization",
       desc: "Neutralizes acidic inflow, buffers alkalinity, and introduces essential natural calcium and magnesium electrolytes to balance potable taste and prevent pipe corrosion.",
@@ -74,6 +100,7 @@ function PurificationPage() {
       key: "uv" as const,
       step: 4,
       name: "UV-C Disinfection Reactor",
+      icon: IconSun,
       tech: "254nm High-Intensity Low-Pressure UV-C Lamp",
       action: "Germicidal Sterilization",
       desc: "Disrupts the DNA/RNA cellular structures of bacteria, viruses, and protozoan cysts (Giardia/Cryptosporidium) providing 99.99% disinfection without chemical chlorination by-products.",
@@ -89,221 +116,282 @@ function PurificationPage() {
   const activeStageHealth = status?.stages[activeStage.key] ?? "HEALTHY";
 
   return (
-    <main className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6">
+    <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
       {/* Title Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
+      <div className="border-border/80 flex flex-wrap items-center justify-between gap-3 border-b pb-3.5">
         <div>
-          <h1 className="font-mono text-base font-extrabold tracking-tight text-[var(--text-primary)] uppercase">
+          <h1 className="font-display text-foreground text-lg font-extrabold tracking-tight">
             Sequential Water Treatment Pipeline
           </h1>
-          <p className="mt-0.5 font-mono text-xs text-[var(--text-muted)]">
+          <p className="text-muted-foreground mt-0.5 text-xs">
             Physical separation, chemical adsorption, remineralization, and
             germicidal disinfection stages
           </p>
         </div>
 
         {status && (
-          <div className="flex items-center gap-2 font-mono text-xs">
-            <span
-              className={`rounded border px-2 py-0.5 font-bold ${
+          <div className="flex items-center gap-2">
+            <Badge
+              variant={status.pump === "RUNNING" ? "default" : "destructive"}
+              className={`font-semibold ${
                 status.pump === "RUNNING"
-                  ? "border-[var(--state-safe-border)] bg-[var(--state-safe-bg)] text-[var(--state-safe-text)]"
-                  : "border-[var(--state-danger-border)] bg-[var(--state-danger-bg)] font-black text-[var(--state-danger-text)]"
+                  ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300"
+                  : ""
               }`}
             >
-              FEED PUMP: {status.pump}
-            </span>
-            <span className="rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-0.5 font-bold text-[var(--text-primary)]">
-              MODE: {status.mode}
-            </span>
+              Feed Pump: {status.pump}
+            </Badge>
+            <Badge variant="outline" className="font-semibold">
+              Mode: {status.mode}
+            </Badge>
           </div>
         )}
       </div>
 
       {isLoading && !status ? (
-        <div className="flex h-56 items-center justify-center font-mono text-xs text-[var(--text-muted)]">
-          <span className="mr-2 h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--brand-secondary)] border-t-transparent" />
-          Querying purification stage controllers...
+        <div className="text-muted-foreground flex h-56 items-center justify-center gap-2 text-xs">
+          <IconLoader2 className="size-5 animate-spin text-[var(--brand-secondary)]" />
+          <span>Querying purification stage controllers...</span>
         </div>
       ) : (
-        <div className="space-y-4">
-          {/* 1. PHYSICAL TREATMENT JOURNEY (Interactive Timeline) */}
-          <div className="ops-card space-y-3 p-4">
-            <h3 className="font-mono text-xs font-bold tracking-wider text-[var(--text-primary)] uppercase">
-              Treatment Stage Sequence (Click to inspect stage)
-            </h3>
+        <div className="space-y-6">
+          {/* 1. Treatment Stage Sequence */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+                Treatment Stage Flow (Select to inspect)
+              </h2>
+              <span className="text-muted-foreground text-xs">
+                4 Sequential Processes
+              </span>
+            </div>
 
-            <div className="grid grid-cols-1 gap-2 font-mono text-xs sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {stagesMeta.map((s) => {
                 const stageHealth = status?.stages[s.key] ?? "HEALTHY";
                 const filterLife = status?.filters[s.key]?.lifePercent ?? 85;
                 const isWarning = filterLife < 25;
                 const isSelected = activeStageKey === s.key;
+                const Icon = s.icon;
 
                 return (
-                  <button
+                  <Card
                     key={s.key}
                     onClick={() => setActiveStageKey(s.key)}
-                    className={`cursor-pointer space-y-2 rounded border p-3 text-left transition ${
+                    className={`cursor-pointer transition-all ${
                       isSelected
-                        ? "border-[var(--brand-primary)] bg-[var(--bg-surface)] shadow-xs ring-1 ring-[var(--brand-primary)]"
-                        : "border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] hover:bg-[var(--bg-subtle)]"
+                        ? "bg-card border-[var(--brand-primary)] shadow-md ring-2 ring-[var(--brand-primary)]/20"
+                        : "hover:border-border hover:bg-muted/40 shadow-2xs"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-[var(--text-dim)] uppercase">
-                        Stage 0{s.step}
-                      </span>
-                      <span
-                        className={`py-0.2 rounded px-1.5 text-[9px] font-bold ${
-                          stageHealth === "HEALTHY" || stageHealth === "ACTIVE"
-                            ? "bg-[var(--state-safe-bg)] text-[var(--state-safe-text)]"
-                            : "bg-[var(--state-warn-bg)] text-[var(--state-warn-text)]"
-                        }`}
-                      >
-                        {stageHealth}
-                      </span>
-                    </div>
-
-                    <div>
-                      <h4 className="font-bold text-[var(--text-primary)]">
-                        {s.name}
-                      </h4>
-                      <span className="block font-sans text-[10px] text-[var(--text-muted)]">
-                        {s.action}
-                      </span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[10px]">
-                        <span className="text-[var(--text-dim)]">
-                          Media Life:
-                        </span>
-                        <span
-                          className={`telemetry-val font-bold ${
-                            isWarning
-                              ? "text-[var(--state-danger-text)]"
-                              : "text-[var(--state-safe-text)]"
-                          }`}
+                    <CardHeader className="p-4 pb-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`flex size-7 items-center justify-center rounded-lg ${
+                              isSelected
+                                ? "bg-[var(--brand-primary)] text-white"
+                                : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            <Icon className="size-4" />
+                          </div>
+                          <span className="text-muted-foreground text-[11px] font-bold uppercase">
+                            Stage 0{s.step}
+                          </span>
+                        </div>
+                        <Badge
+                          variant={
+                            stageHealth === "HEALTHY" ||
+                            stageHealth === "ACTIVE"
+                              ? "default"
+                              : "secondary"
+                          }
+                          className={
+                            stageHealth === "HEALTHY" ||
+                            stageHealth === "ACTIVE"
+                              ? "border-emerald-500/30 bg-emerald-500/15 text-[10px] text-emerald-800 dark:text-emerald-300"
+                              : "text-[10px]"
+                          }
                         >
-                          {filterLife}%
-                        </span>
+                          {stageHealth}
+                        </Badge>
                       </div>
-                      <div className="h-1 w-full overflow-hidden rounded bg-[var(--bg-subtle)]">
-                        <div
-                          className={`h-full ${
+
+                      <CardTitle className="text-foreground pt-2 text-sm font-bold">
+                        {s.name}
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        {s.action}
+                      </CardDescription>
+                    </CardHeader>
+
+                    <CardContent className="p-4 pt-1">
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">
+                            Media Life:
+                          </span>
+                          <span
+                            className={`telemetry-val font-bold ${
+                              isWarning ? "text-rose-600" : "text-emerald-600"
+                            }`}
+                          >
+                            {filterLife}%
+                          </span>
+                        </div>
+                        <Progress
+                          value={filterLife}
+                          className={`h-2 ${
                             isWarning
-                              ? "bg-[var(--state-danger-text)]"
-                              : "bg-[var(--brand-secondary)]"
+                              ? "[&>div]:bg-rose-500"
+                              : "[&>div]:bg-[var(--brand-secondary)]"
                           }`}
-                          style={{ width: `${filterLife}%` }}
                         />
                       </div>
-                    </div>
-                  </button>
+                    </CardContent>
+                  </Card>
                 );
               })}
             </div>
           </div>
 
-          {/* 2. STAGE TECHNICAL DEEP DIVE (Selected Stage Detail) */}
-          <div className="ops-card space-y-4 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-3">
-              <div className="flex items-center gap-2">
-                <span className="rounded bg-[var(--brand-primary)] px-2 py-0.5 font-mono text-[10px] font-bold text-white">
-                  STAGE 0{activeStage.step}
-                </span>
-                <h2 className="font-mono text-base font-extrabold text-[var(--text-primary)] uppercase">
-                  {activeStage.name}
-                </h2>
-              </div>
-
-              <div className="flex items-center gap-2 font-mono text-xs">
-                <span className="text-[var(--text-dim)]">
-                  Operating Status:
-                </span>
-                <span
-                  className={`rounded px-2 py-0.5 font-bold ${
-                    activeStageHealth === "HEALTHY" ||
-                    activeStageHealth === "ACTIVE"
-                      ? "border border-[var(--state-safe-border)] bg-[var(--state-safe-bg)] text-[var(--state-safe-text)]"
-                      : "border border-[var(--state-warn-border)] bg-[var(--state-warn-bg)] text-[var(--state-warn-text)]"
-                  }`}
-                >
-                  {activeStageHealth}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-center">
-              <div className="space-y-3 lg:col-span-8">
-                <div>
-                  <span className="block font-mono text-[10px] font-bold text-[var(--text-dim)] uppercase">
-                    Technology & Mechanism
-                  </span>
-                  <span className="font-mono text-xs font-bold text-[var(--brand-secondary)]">
-                    {activeStage.tech}
-                  </span>
+          {/* 2. Selected Stage Detail */}
+          <Card className="shadow-2xs">
+            <CardHeader className="p-6 pb-3">
+              <div className="border-border/60 flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+                <div className="flex items-center gap-2.5">
+                  <Badge className="bg-[var(--brand-primary)] text-xs font-bold text-white">
+                    Stage 0{activeStage.step}
+                  </Badge>
+                  <CardTitle className="text-foreground text-base font-bold">
+                    {activeStage.name}
+                  </CardTitle>
                 </div>
 
-                <p className="font-sans text-xs leading-relaxed text-[var(--text-secondary)]">
-                  {activeStage.desc}
-                </p>
-
-                <div className="rounded border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-2.5 font-mono text-xs text-[var(--text-muted)]">
-                  <span className="mb-0.5 block text-[9px] font-bold text-[var(--text-dim)] uppercase">
-                    Engineering Parameters:
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground text-xs">
+                    Operating Status:
                   </span>
-                  {activeStage.spec}
+                  <Badge
+                    variant={
+                      activeStageHealth === "HEALTHY" ||
+                      activeStageHealth === "ACTIVE"
+                        ? "default"
+                        : "secondary"
+                    }
+                    className={
+                      activeStageHealth === "HEALTHY" ||
+                      activeStageHealth === "ACTIVE"
+                        ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300"
+                        : ""
+                    }
+                  >
+                    {activeStageHealth}
+                  </Badge>
                 </div>
               </div>
+            </CardHeader>
 
-              <div className="space-y-3 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-4 font-mono text-xs lg:col-span-4">
-                <span className="block font-bold text-[var(--text-primary)] uppercase">
-                  Media Lifecycle Status
-                </span>
+            <CardContent className="p-6 pt-0">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-center">
+                <div className="space-y-3 lg:col-span-8">
+                  <div>
+                    <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+                      Technology & Mechanism
+                    </span>
+                    <h3 className="mt-0.5 text-sm font-bold text-[var(--brand-secondary)]">
+                      {activeStage.tech}
+                    </h3>
+                  </div>
 
-                <div className="flex items-baseline justify-between">
-                  <span className="text-[var(--text-muted)]">
-                    Remaining Media Life:
-                  </span>
-                  <span className="telemetry-val text-2xl font-black text-[var(--text-primary)]">
-                    {activeFilterInfo.lifePercent}%
-                  </span>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    {activeStage.desc}
+                  </p>
+
+                  <div className="border-border/80 bg-muted/40 text-muted-foreground rounded-xl border p-3 text-xs">
+                    <span className="text-foreground mb-1 block text-[11px] font-bold uppercase">
+                      Engineering Specifications:
+                    </span>
+                    <span>{activeStage.spec}</span>
+                  </div>
                 </div>
 
-                <div className="h-2 w-full overflow-hidden rounded bg-[var(--bg-subtle)]">
-                  <div
-                    className={`h-full ${
-                      activeFilterInfo.lifePercent < 25
-                        ? "bg-[var(--state-danger-text)]"
-                        : "bg-[var(--brand-secondary)]"
-                    }`}
-                    style={{ width: `${activeFilterInfo.lifePercent}%` }}
-                  />
-                </div>
+                {/* Media Lifecycle Gauge */}
+                <Card className="border-border/80 bg-muted/30 shadow-2xs lg:col-span-4">
+                  <CardHeader className="p-4 pb-2">
+                    <CardTitle className="text-foreground text-xs font-bold uppercase">
+                      Media Capacity Status
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 p-4 pt-1">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-muted-foreground text-xs">
+                        Remaining Life:
+                      </span>
+                      <span className="telemetry-val text-foreground text-3xl font-black">
+                        {activeFilterInfo.lifePercent}%
+                      </span>
+                    </div>
 
-                <span className="block text-[11px] text-[var(--text-dim)]">
-                  {activeFilterInfo.lifePercent < 25
-                    ? "▲ Media capacity degraded. Schedule filter replacement."
-                    : "● Media adsorption capacity optimal."}
-                </span>
+                    <Progress
+                      value={activeFilterInfo.lifePercent}
+                      className={`h-2.5 ${
+                        activeFilterInfo.lifePercent < 25
+                          ? "[&>div]:bg-rose-500"
+                          : "[&>div]:bg-[var(--brand-secondary)]"
+                      }`}
+                    />
+
+                    <div className="flex items-center gap-1.5 text-xs">
+                      {activeFilterInfo.lifePercent < 25 ? (
+                        <>
+                          <IconAlertTriangle className="size-4 shrink-0 text-rose-500" />
+                          <span className="font-medium text-rose-600 dark:text-rose-400">
+                            Media capacity low. Schedule maintenance overhaul.
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <IconCheck className="size-4 shrink-0 text-emerald-500" />
+                          <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                            Media adsorption capacity optimal.
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+
+          {/* 2.5 Multi-Barrier Efficiency & Media Degradation Analytics */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <PurificationEfficiencyChart
+              status={status}
+              className="h-full shadow-2xs"
+            />
+            <PurificationTrajectoryChart
+              status={status}
+              className="h-full shadow-2xs"
+            />
           </div>
 
-          {/* 3. INTERLOCK & PUMP CUTOFF CONTROLLER */}
-          <div className="ops-card space-y-2 p-4">
-            <h3 className="font-mono text-xs font-bold tracking-wider text-[var(--text-primary)] uppercase">
-              Automated Purification Interlock Controller
-            </h3>
-            <p className="font-sans text-xs leading-relaxed text-[var(--text-muted)]">
-              The primary intake feed pump is automatically linked to the
-              Quality Gate and leak detection engine. If water quality fails or
-              an emergency cutoff condition is triggered, the feed pump
-              immediately halts to isolate contaminated inflows.
-            </p>
-          </div>
+          {/* 3. Automated Interlock Bulletin */}
+          <Alert className="border-border/80 bg-muted/30 shadow-2xs">
+            <IconInfoCircle className="size-4 text-[var(--brand-secondary)]" />
+            <AlertTitle className="text-xs font-bold uppercase">
+              Automated Purification Interlock Architecture
+            </AlertTitle>
+            <AlertDescription className="text-muted-foreground mt-1 text-xs leading-relaxed">
+              The primary intake feed pump is automatically interlocked with the
+              Quality Gate and leak detection engine. If water quality
+              parameters fail safe thresholds or an emergency pipe breach is
+              signaled, the pump immediately shuts down to isolate contaminated
+              fluid.
+            </AlertDescription>
+          </Alert>
         </div>
       )}
     </main>

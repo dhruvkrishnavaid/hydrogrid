@@ -1,6 +1,6 @@
 # HydroGrid --- Complete Presentation & Demo Guide
 
-## Industrial Water Operations and SCADA Control Console
+## Autonomous Water Operations & Quality Gate Control Console
 
 > **Purpose of this document:** This is the complete presentation guide
 > for the HydroGrid team. It explains the user journey from entering the
@@ -18,10 +18,7 @@
 
 ### Judge one-liner
 
-**HydroGrid is an industrial water-operations and SCADA platform that
-continuously monitors water quality, treatment, hydraulic integrity, and
-hardware health, then uses safety gates and automated isolation to
-prevent unsafe water from being released.**
+**HydroGrid is an autonomous water-operations platform engineered to replace traditional SCADA. It continuously monitors water quality, treatment, hydraulic integrity, and hardware health via offline decision-making capable nodes, then uses automated quality gates and physical isolation to prevent unsafe water from being released.**
 
 ### Slightly longer explanation
 
@@ -45,7 +42,7 @@ The platform combines:
 - Audit logging
 - Role-based access
 - Real-time SSE telemetry
-- A deterministic SCADA simulator for demonstrations
+- A deterministic hardware fault and telemetry simulator for demonstrations
 
 ---
 
@@ -1134,9 +1131,9 @@ If the judges give the team very little time, use this version.
 
 ## Opening --- 20 seconds
 
-> "HydroGrid is an industrial water operations and SCADA platform. Its
+> "HydroGrid is an autonomous water operations platform engineered to replace traditional SCADA. Its
 > job is to continuously monitor water quality, treatment, hydraulic
-> integrity, and hardware health, and most importantly, prevent unsafe
+> integrity, and hardware health using offline decision-making capable edge nodes, and most importantly, prevent unsafe
 > water from being released."
 
 ---
@@ -1436,10 +1433,10 @@ Then demonstrate the simulator.
 
 Answer based on the actual project implementation:
 
-> "The application is a software SCADA demonstration. The edge-node and
+> "The application is a software demonstration of HydroGrid's autonomous control loop. The edge-node and
 > actuator behavior is represented through the system's telemetry and
 > deterministic simulator, allowing us to demonstrate the complete
-> operational control loop without requiring physical plant hardware
+> closed-loop control system without requiring physical plant hardware
 > during the presentation."
 
 ### Important
@@ -1840,8 +1837,7 @@ If a presenter forgets everything else, remember these six sentences:
 
 ### 1. What is HydroGrid?
 
-**"An industrial water SCADA platform that monitors quality, treatment,
-hydraulics, hardware, and release safety."**
+**"An autonomous water intelligence platform engineered to replace traditional SCADA, monitoring quality, treatment, hydraulics, hardware, and release safety via edge decision nodes."**
 
 ### 2. What is the dashboard?
 

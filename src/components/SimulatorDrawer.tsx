@@ -1,12 +1,36 @@
+import {
+  IconAlertTriangle,
+  IconBolt,
+  IconCheck,
+  IconDroplet,
+  IconLoader2,
+  IconRotate2,
+  IconTool,
+  IconWifi,
+  IconWifiOff,
+} from "@tabler/icons-react";
 import { useState } from "react";
 import type React from "react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth-context";
 
 export const SimulatorDrawer: React.FC = () => {
   const { activeSiteId, role } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
   const [loadingScenario, setLoadingScenario] = useState<string | null>(null);
   const [lastResult, setLastResult] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
@@ -38,163 +62,229 @@ export const SimulatorDrawer: React.FC = () => {
 
   return (
     <div className="fixed right-4 bottom-4 z-40">
-      {/* Floating Pill Toggle Button */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="flex items-center gap-1.5 rounded border border-[var(--border-strong)] bg-[var(--bg-surface)] px-3 py-1.5 font-mono text-xs font-bold text-[var(--text-primary)] shadow-md transition hover:bg-[var(--bg-subtle)]"
-          title="Open Controlled Demonstration Scenario Injector"
+      <Sheet>
+        <SheetTrigger
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "border-border/80 bg-background/95 text-foreground hover:bg-muted hover:text-foreground dark:bg-card/90 gap-2 rounded-full border px-3.5 py-2 font-semibold shadow-lg backdrop-blur-md cursor-pointer",
+          )}
         >
-          <span className="font-black text-[var(--brand-secondary)]">⚡</span>
-          <span>Demo Injector</span>
-        </button>
-      )}
+          <IconBolt className="size-4 fill-amber-500 text-amber-500" />
+          <span>Demo Scenarios</span>
+          <Badge
+            variant="secondary"
+            className="h-5 px-1.5 text-[10px] font-bold"
+          >
+            Sim
+          </Badge>
+        </SheetTrigger>
 
-      {/* Drawer Control Panel */}
-      {isOpen && (
-        <div className="w-80 rounded border border-[var(--border-strong)] bg-[var(--bg-surface)] p-4 shadow-xl backdrop-blur-md sm:w-96">
-          <div className="mb-3 flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-[var(--brand-secondary)]">
-                ⚡
-              </span>
-              <h3 className="m-0 font-mono text-xs font-bold tracking-wider text-[var(--text-primary)] uppercase">
+        <SheetContent
+          side="right"
+          className="w-88 overflow-y-auto p-6 sm:w-[420px]"
+        >
+          <SheetHeader className="p-0 pb-4 text-left">
+            <div className="flex items-center gap-2">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <IconBolt className="size-4" />
+              </div>
+              <SheetTitle className="text-base font-bold tracking-tight">
                 Demo Scenario Injector
-              </h3>
+              </SheetTitle>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="font-mono text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-            >
-              [✕ Close]
-            </button>
-          </div>
+            <SheetDescription className="text-muted-foreground text-xs">
+              Simulate hardware sensors, pipeline breaches, and water
+              contamination events for live evaluation.
+            </SheetDescription>
+          </SheetHeader>
+
+          <Separator className="my-4" />
 
           {!canMutate && (
-            <div className="mb-3 rounded border border-[var(--state-warn-border)] bg-[var(--state-warn-bg)] p-2 font-mono text-[11px] font-semibold text-[var(--state-warn-text)]">
-              🔒 Switch persona to OPERATOR or ADMIN to inject scenarios.
-            </div>
+            <Alert className="mb-4 border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300">
+              <IconAlertTriangle className="size-4 text-amber-600 dark:text-amber-400" />
+              <AlertDescription className="text-xs font-medium">
+                Switch demo persona to <strong>OPERATOR</strong> or{" "}
+                <strong>ADMIN</strong> in the header to trigger simulations.
+              </AlertDescription>
+            </Alert>
           )}
 
-          <div className="space-y-3 font-mono text-xs">
+          <div className="space-y-4">
             {/* Water Quality Contaminants */}
             <div>
-              <span className="mb-1 block text-[10px] font-bold text-[var(--text-dim)] uppercase">
-                Water Contamination Scenarios
-              </span>
-              <div className="grid grid-cols-2 gap-1.5">
-                <button
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+                  Water Contaminants
+                </span>
+                <Badge variant="outline" className="text-[10px]">
+                  Quality Gate
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={!canMutate || Boolean(loadingScenario)}
                   onClick={() => triggerScenario("NORMAL")}
-                  className="rounded border border-[var(--state-safe-border)] bg-[var(--state-safe-bg)] px-2 py-1 text-left font-semibold text-[var(--state-safe-text)] transition hover:brightness-95 disabled:opacity-50"
+                  className="h-auto justify-start border-emerald-500/30 bg-emerald-500/5 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-500/15 dark:text-emerald-300"
                 >
-                  ● Safe / Normal
-                </button>
-                <button
+                  <IconCheck className="mr-1.5 size-3.5 shrink-0 text-emerald-600" />
+                  <span>Nominal Safe</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={!canMutate || Boolean(loadingScenario)}
                   onClick={() => triggerScenario("UNSAFE_HEAVY_METALS")}
-                  className="rounded border border-[var(--state-danger-border)] bg-[var(--state-danger-bg)] px-2 py-1 text-left font-semibold text-[var(--state-danger-text)] transition hover:brightness-95 disabled:opacity-50"
+                  className="h-auto justify-start border-rose-500/30 bg-rose-500/5 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-500/15 dark:text-rose-300"
                 >
-                  ▲ Heavy Metals
-                </button>
-                <button
+                  <IconDroplet className="mr-1.5 size-3.5 shrink-0 text-rose-600" />
+                  <span>Heavy Metals</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={!canMutate || Boolean(loadingScenario)}
                   onClick={() => triggerScenario("UNSAFE_PH")}
-                  className="rounded border border-[var(--state-danger-border)] bg-[var(--state-danger-bg)] px-2 py-1 text-left font-semibold text-[var(--state-danger-text)] transition hover:brightness-95 disabled:opacity-50"
+                  className="h-auto justify-start border-rose-500/30 bg-rose-500/5 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-500/15 dark:text-rose-300"
                 >
-                  ▲ Acidic pH (4.2)
-                </button>
-                <button
+                  <IconAlertTriangle className="mr-1.5 size-3.5 shrink-0 text-rose-600" />
+                  <span>Acidic pH (4.2)</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={!canMutate || Boolean(loadingScenario)}
                   onClick={() => triggerScenario("UNSAFE_TURBIDITY")}
-                  className="rounded border border-[var(--state-danger-border)] bg-[var(--state-danger-bg)] px-2 py-1 text-left font-semibold text-[var(--state-danger-text)] transition hover:brightness-95 disabled:opacity-50"
+                  className="h-auto justify-start border-rose-500/30 bg-rose-500/5 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-500/15 dark:text-rose-300"
                 >
-                  ▲ Turbidity Spill
-                </button>
+                  <IconDroplet className="mr-1.5 size-3.5 shrink-0 text-rose-600" />
+                  <span>Turbidity Spill</span>
+                </Button>
               </div>
             </div>
 
-            {/* Pipeline & Hardware Faults */}
+            <Separator />
+
+            {/* Hydraulics & Nodes */}
             <div>
-              <span className="mb-1 block text-[10px] font-bold text-[var(--text-dim)] uppercase">
-                Hydraulic & Node Faults
-              </span>
-              <div className="grid grid-cols-2 gap-1.5">
-                <button
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+                  Hydraulic & Node Events
+                </span>
+                <Badge variant="outline" className="text-[10px]">
+                  Edge Node Mesh
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={!canMutate || Boolean(loadingScenario)}
                   onClick={() => triggerScenario("LEAK")}
-                  className="rounded border border-[var(--state-danger-border)] bg-[var(--state-danger-bg)] px-2 py-1 text-left font-semibold text-[var(--state-danger-text)] transition hover:brightness-95 disabled:opacity-50"
+                  className="h-auto justify-start border-rose-500/30 bg-rose-500/5 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-500/15 dark:text-rose-300"
                 >
-                  ▲ Pipe Leak (28%)
-                </button>
-                <button
+                  <IconAlertTriangle className="mr-1.5 size-3.5 shrink-0 text-rose-600" />
+                  <span>Pipe Leak (28%)</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={!canMutate || Boolean(loadingScenario)}
                   onClick={() => triggerScenario("SENSOR_DRIFT")}
-                  className="rounded border border-[var(--state-warn-border)] bg-[var(--state-warn-bg)] px-2 py-1 text-left font-semibold text-[var(--state-warn-text)] transition hover:brightness-95 disabled:opacity-50"
+                  className="h-auto justify-start border-amber-500/30 bg-amber-500/5 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-500/15 dark:text-amber-300"
                 >
-                  ◆ pH Probe Drift
-                </button>
-                <button
+                  <IconTool className="mr-1.5 size-3.5 shrink-0 text-amber-600" />
+                  <span>Sensor Drift</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={!canMutate || Boolean(loadingScenario)}
                   onClick={() => triggerScenario("DEVICE_OFFLINE")}
-                  className="rounded border border-[var(--state-danger-border)] bg-[var(--state-danger-bg)] px-2 py-1 text-left font-semibold text-[var(--state-danger-text)] transition hover:brightness-95 disabled:opacity-50"
+                  className="h-auto justify-start border-rose-500/30 bg-rose-500/5 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-500/15 dark:text-rose-300"
                 >
-                  ▲ Node Offline
-                </button>
-                <button
+                  <IconWifiOff className="mr-1.5 size-3.5 shrink-0 text-rose-600" />
+                  <span>Node Offline</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={!canMutate || Boolean(loadingScenario)}
                   onClick={() => triggerScenario("DEVICE_ONLINE")}
-                  className="rounded border border-[var(--state-safe-border)] bg-[var(--state-safe-bg)] px-2 py-1 text-left font-semibold text-[var(--state-safe-text)] transition hover:brightness-95 disabled:opacity-50"
+                  className="h-auto justify-start border-emerald-500/30 bg-emerald-500/5 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-500/15 dark:text-emerald-300"
                 >
-                  ● Node Online
-                </button>
+                  <IconWifi className="mr-1.5 size-3.5 shrink-0 text-emerald-600" />
+                  <span>Node Online</span>
+                </Button>
               </div>
             </div>
+
+            <Separator />
 
             {/* Maintenance & Reset */}
             <div>
-              <span className="mb-1 block text-[10px] font-bold text-[var(--text-dim)] uppercase">
-                Maintenance & Reset
-              </span>
-              <div className="grid grid-cols-2 gap-1.5">
-                <button
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+                  Maintenance & Reset
+                </span>
+                <Badge variant="outline" className="text-[10px]">
+                  Operations
+                </Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={!canMutate || Boolean(loadingScenario)}
                   onClick={() => triggerScenario("FILTER_WARNING")}
-                  className="rounded border border-[var(--state-warn-border)] bg-[var(--state-warn-bg)] px-2 py-1 text-left font-semibold text-[var(--state-warn-text)] transition hover:brightness-95 disabled:opacity-50"
+                  className="h-auto justify-start border-amber-500/30 bg-amber-500/5 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-500/15 dark:text-amber-300"
                 >
-                  ◆ Filter Warning
-                </button>
-                <button
+                  <IconTool className="mr-1.5 size-3.5 shrink-0 text-amber-600" />
+                  <span>Filter Warning</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   disabled={!canMutate || Boolean(loadingScenario)}
                   onClick={() => triggerScenario("RESET")}
-                  className="rounded border border-[var(--border-strong)] bg-[var(--bg-subtle)] px-2 py-1 text-left font-semibold text-[var(--text-primary)] transition hover:brightness-95 disabled:opacity-50"
+                  className="border-border bg-muted/60 text-foreground hover:bg-muted h-auto justify-start py-2 text-xs font-semibold"
                 >
-                  ↺ Baseline Reset
-                </button>
+                  <IconRotate2 className="text-foreground mr-1.5 size-3.5 shrink-0" />
+                  <span>Reset Baseline</span>
+                </Button>
               </div>
             </div>
           </div>
 
           {loadingScenario && (
-            <div className="mt-2.5 flex items-center gap-1.5 font-mono text-[11px] text-[var(--text-muted)]">
-              <span className="h-2 w-2 animate-spin rounded-full border-2 border-[var(--brand-primary)] border-t-transparent" />
-              Injecting scenario {loadingScenario}...
+            <div className="border-border/80 bg-muted/40 text-muted-foreground mt-4 flex items-center gap-2 rounded-lg border p-2.5 text-xs">
+              <IconLoader2 className="size-4 animate-spin text-[var(--brand-secondary)]" />
+              <span>Injecting {loadingScenario} telemetry event...</span>
             </div>
           )}
 
           {lastResult && (
-            <div
-              className={`mt-2.5 rounded border p-2 font-mono text-[11px] break-words ${
+            <Alert
+              className={`mt-4 ${
                 isError
-                  ? "border-[var(--state-danger-border)] bg-[var(--state-danger-bg)] text-[var(--state-danger-text)]"
-                  : "border-[var(--state-safe-border)] bg-[var(--state-safe-bg)] text-[var(--state-safe-text)]"
+                  ? "border-rose-500/30 bg-rose-500/10 text-rose-800 dark:text-rose-300"
+                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
               }`}
             >
-              {lastResult}
-            </div>
+              {isError ? (
+                <IconAlertTriangle className="size-4 text-rose-600 dark:text-rose-400" />
+              ) : (
+                <IconCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
+              )}
+              <AlertDescription className="text-xs font-medium break-all">
+                {lastResult}
+              </AlertDescription>
+            </Alert>
           )}
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

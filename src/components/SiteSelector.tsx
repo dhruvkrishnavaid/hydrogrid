@@ -1,4 +1,14 @@
+import { IconBuildingFactory2, IconLoader2 } from "@tabler/icons-react";
 import type React from "react";
+
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { useAuth } from "../lib/auth-context";
 
@@ -8,37 +18,60 @@ export const SiteSelector: React.FC = () => {
 
   if (isLoading || isAuthenticating) {
     return (
-      <div className="flex items-center gap-1.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-muted)]">
-        <span className="h-1.5 w-1.5 animate-spin rounded-full bg-[var(--state-warn-text)]" />
-        Syncing...
-      </div>
+      <Badge
+        variant="outline"
+        className="text-muted-foreground gap-1.5 px-2.5 py-1 text-xs"
+      >
+        <IconLoader2 className="size-3 animate-spin text-[var(--brand-secondary)]" />
+        Syncing station...
+      </Badge>
     );
   }
 
   if (sites.length === 0) {
     return (
-      <div className="flex items-center gap-1.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-muted)]">
-        No Station
-      </div>
+      <Badge variant="outline" className="text-muted-foreground text-xs">
+        No Stations Found
+      </Badge>
     );
   }
 
   return (
-    <div className="flex items-center gap-1">
-      <span className="hidden font-mono text-[9px] font-bold text-[var(--text-dim)] uppercase sm:inline">
-        Station:
-      </span>
-      <select
-        value={activeSiteId ?? ""}
-        onChange={(e) => setActiveSiteId(e.target.value)}
-        className="rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-0.5 font-mono text-[11px] font-semibold text-[var(--text-primary)] focus:border-[var(--border-focus)] focus:outline-none"
+    <div className="flex items-center gap-2">
+      <Select
+        value={activeSiteId ?? undefined}
+        onValueChange={(val) => {
+          if (val) setActiveSiteId(val);
+        }}
       >
-        {sites.map((site) => (
-          <option key={site.id} value={site.id}>
-            {site.name}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger
+          size="sm"
+          className="border-border/80 bg-background/80 hover:bg-muted/60 h-8 gap-2 border px-3 text-xs font-semibold shadow-xs"
+        >
+          <IconBuildingFactory2 className="size-3.5 text-[var(--brand-secondary)]" />
+          <SelectValue placeholder="Select Station" />
+        </SelectTrigger>
+        <SelectContent align="start" className="min-w-[220px]">
+          {sites.map((site) => (
+            <SelectItem
+              key={site.id}
+              value={site.id}
+              className="text-xs font-medium"
+            >
+              <div className="flex flex-col text-left">
+                <span className="text-foreground font-semibold">
+                  {site.name}
+                </span>
+                {site.location && (
+                  <span className="text-muted-foreground text-[10px]">
+                    {site.location}
+                  </span>
+                )}
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 };

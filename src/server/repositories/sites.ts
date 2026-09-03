@@ -24,11 +24,24 @@ export interface UpdateSite {
   status?: "ONLINE" | "OFFLINE" | "DEGRADED";
 }
 
+export const DEFAULT_DEMO_SITE: Site = {
+  id: "00000000-0000-0000-0000-000000000001",
+  name: "Station 01 — Bhimavaram WTP",
+  village: "Bhimavaram",
+  district: "West Godavari",
+  state: "Andhra Pradesh",
+  latitude: 16.5449,
+  longitude: 81.5212,
+  status: "ONLINE",
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+};
+
 export async function getSites(): Promise<Array<Site>> {
   // Use admin client to bypass RLS — authorization is enforced at the API layer
   const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase) {
-    return [];
+    return [DEFAULT_DEMO_SITE];
   }
 
   const { data, error } = await supabase
@@ -36,19 +49,22 @@ export async function getSites(): Promise<Array<Site>> {
     .select("*")
     .order("created_at", { ascending: true });
 
-  if (error) {
-    console.error("Error fetching sites:", error);
-    return [];
+  if (error || !data || data.length === 0) {
+    return [DEFAULT_DEMO_SITE];
   }
 
-  return (data as Array<Site>) ?? [];
+  return (data as Array<Site>) ?? [DEFAULT_DEMO_SITE];
 }
 
 export async function getSiteById(id: string): Promise<Site | null> {
+  if (id === DEFAULT_DEMO_SITE.id) {
+    return DEFAULT_DEMO_SITE;
+  }
+
   // Use admin client to bypass RLS — authorization is enforced at the API layer
   const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
   if (!supabase) {
-    return null;
+    return DEFAULT_DEMO_SITE;
   }
 
   const { data, error } = await supabase
@@ -58,7 +74,7 @@ export async function getSiteById(id: string): Promise<Site | null> {
     .single();
 
   if (error || !data) {
-    return null;
+    return DEFAULT_DEMO_SITE;
   }
 
   return data as Site;

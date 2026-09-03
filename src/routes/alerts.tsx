@@ -1,5 +1,24 @@
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconHistory,
+  IconLoader2,
+} from "@tabler/icons-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 import { NoStationSelected } from "../components/NoStationSelected";
 import { api } from "../lib/api-client";
@@ -77,155 +96,201 @@ function AlertsPage() {
   );
 
   return (
-    <main className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6">
+    <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
       {/* Title & Filter Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
+      <div className="border-border/80 flex flex-wrap items-center justify-between gap-3 border-b pb-3.5">
         <div>
-          <h1 className="font-mono text-base font-extrabold tracking-tight text-[var(--text-primary)] uppercase">
+          <h1 className="font-display text-foreground text-lg font-extrabold tracking-tight">
             Operational Incident Queue & Event Stream
           </h1>
-          <p className="mt-0.5 font-mono text-xs text-[var(--text-muted)]">
+          <p className="text-muted-foreground mt-0.5 text-xs">
             Active plant alarms, Quality Gate lockout decisions, and automated
             state transition audit trail
           </p>
         </div>
 
-        <div className="flex items-center gap-1 font-mono text-xs">
-          <span className="text-[10px] font-bold text-[var(--text-dim)] uppercase">
+        {/* Filter Buttons */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-muted-foreground text-xs font-semibold">
             Filter:
           </span>
           {["ALL", "CRITICAL", "WARNING", "INFO"].map((sev) => (
-            <button
+            <Button
               key={sev}
+              variant={severityFilter === sev ? "default" : "outline"}
+              size="xs"
               onClick={() => setSeverityFilter(sev)}
-              className={`rounded border px-2 py-0.5 font-mono text-xs font-bold transition ${
-                severityFilter === sev
-                  ? "border-[var(--brand-primary)] bg-[var(--brand-primary)] text-white"
-                  : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]"
-              }`}
+              className="h-7 px-2.5 text-xs font-semibold"
             >
               {sev}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
-      {/* 1. ACTIVE ALARMS QUEUE */}
-      <div className="ops-card space-y-3 p-4">
-        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-          <h2 className="font-mono text-xs font-bold tracking-wider text-[var(--text-primary)] uppercase">
-            Active Alarms Incident Queue ({filteredAlerts.length})
-          </h2>
-          <span className="font-mono text-[10px] text-[var(--text-dim)]">
-            Acknowledge to record operator response
-          </span>
-        </div>
+      {/* 1. Active Alarms Queue */}
+      <Card className="shadow-2xs">
+        <CardHeader className="p-4 pb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <IconAlertTriangle className="size-4 text-rose-600" />
+              <CardTitle className="text-foreground text-sm font-bold">
+                Active Alarms Queue ({filteredAlerts.length})
+              </CardTitle>
+            </div>
+            <span className="text-muted-foreground text-xs">
+              Acknowledge to record operator response
+            </span>
+          </div>
+        </CardHeader>
 
-        {isLoading && alerts.length === 0 ? (
-          <div className="py-8 text-center font-mono text-xs text-[var(--text-muted)]">
-            Loading system alarms...
-          </div>
-        ) : filteredAlerts.length === 0 ? (
-          <div className="py-6 text-center font-mono text-xs text-[var(--text-muted)]">
-            ● No active alarms matching the selected severity filter.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredAlerts.map((a) => (
-              <div
-                key={a.id}
-                className={`flex items-start justify-between gap-3 rounded border p-3 font-mono text-xs ${
-                  a.severity === "CRITICAL"
-                    ? "border-[var(--state-danger-border)] bg-[var(--state-danger-bg)] text-[var(--state-danger-text)]"
-                    : a.severity === "WARNING"
-                      ? "border-[var(--state-warn-border)] bg-[var(--state-warn-bg)] text-[var(--state-warn-text)]"
-                      : "border-[var(--state-safe-border)] bg-[var(--state-safe-bg)] text-[var(--state-safe-text)]"
-                }`}
-              >
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold tracking-wider uppercase">
-                      [{a.severity}] {a.type}
-                    </span>
-                    <span className="py-0.2 rounded border bg-[var(--bg-surface)] px-1.5 text-[9px] font-bold text-[var(--text-primary)]">
-                      STATUS: {a.status}
-                    </span>
-                  </div>
-                  <p className="m-0 font-sans text-xs text-[var(--text-primary)]">
-                    {a.message}
-                  </p>
-                  <span className="block text-[10px] opacity-75">
-                    Triggered: {new Date(a.created_at).toLocaleString()}
-                  </span>
-                </div>
+        <CardContent className="p-4 pt-1">
+          {isLoading && alerts.length === 0 ? (
+            <div className="text-muted-foreground flex items-center justify-center gap-2 py-8 text-xs">
+              <IconLoader2 className="size-4 animate-spin text-[var(--brand-secondary)]" />
+              <span>Loading system alarms...</span>
+            </div>
+          ) : filteredAlerts.length === 0 ? (
+            <div className="text-muted-foreground py-8 text-center text-xs">
+              <IconCheck className="mx-auto mb-1.5 size-5 text-emerald-600" />
+              <span>
+                No active alarms matching the selected severity filter.
+              </span>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredAlerts.map((a) => (
+                <Alert
+                  key={a.id}
+                  variant={
+                    a.severity === "CRITICAL" ? "destructive" : "default"
+                  }
+                  className="p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={
+                            a.severity === "CRITICAL"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                          className="text-[10px] font-bold uppercase"
+                        >
+                          {a.severity}
+                        </Badge>
+                        <span className="text-foreground text-xs font-bold">
+                          {a.type}
+                        </span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {a.status}
+                        </Badge>
+                      </div>
 
-                {a.status === "UNREAD" && (
-                  <button
-                    disabled={!canAcknowledge || acknowledgingId === a.id}
-                    onClick={() => handleAcknowledge(a.id)}
-                    className="shrink-0 rounded bg-[var(--brand-primary)] px-2.5 py-1 text-[10px] font-bold text-white transition hover:bg-[var(--brand-secondary)] disabled:opacity-50"
-                  >
-                    {acknowledgingId === a.id ? "Saving..." : "ACKNOWLEDGE"}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                      <AlertDescription className="text-foreground text-xs font-medium">
+                        {a.message}
+                      </AlertDescription>
 
-      {/* 2. OPERATIONAL AUDIT LOG */}
-      <div className="ops-card space-y-3 p-4">
-        <h3 className="font-mono text-xs font-bold tracking-wider text-[var(--text-primary)] uppercase">
-          Plant Operational Event Audit Log ({filteredEvents.length})
-        </h3>
-        {filteredEvents.length === 0 ? (
-          <div className="py-6 text-center font-mono text-xs text-[var(--text-muted)]">
-            No events found.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs">
-              <thead className="border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] text-[10px] text-[var(--text-dim)] uppercase">
-                <tr>
-                  <th className="px-3 py-2">Timestamp</th>
-                  <th className="px-3 py-2">Severity</th>
-                  <th className="px-3 py-2">Event Classification</th>
-                  <th className="px-3 py-2">Operational Message</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border-subtle)]">
-                {filteredEvents.map((e) => (
-                  <tr key={e.id} className="hover:bg-[var(--bg-subtle)]">
-                    <td className="px-3 py-2 text-[var(--text-muted)]">
-                      {new Date(e.created_at).toLocaleString()}
-                    </td>
-                    <td className="px-3 py-2 font-bold">
-                      <span
-                        className={`py-0.2 rounded px-1.5 text-[9px] font-bold ${
-                          e.severity === "CRITICAL"
-                            ? "bg-[var(--state-danger-bg)] text-[var(--state-danger-text)]"
-                            : e.severity === "WARNING"
-                              ? "bg-[var(--state-warn-bg)] text-[var(--state-warn-text)]"
-                              : "bg-[var(--state-safe-bg)] text-[var(--state-safe-text)]"
-                        }`}
-                      >
-                        {e.severity}
+                      <span className="text-muted-foreground text-[11px]">
+                        Triggered: {new Date(a.created_at).toLocaleString()}
                       </span>
-                    </td>
-                    <td className="px-3 py-2 font-bold text-[var(--text-primary)]">
-                      {e.type}
-                    </td>
-                    <td className="px-3 py-2 font-sans text-xs text-[var(--text-muted)]">
-                      {e.message}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+
+                    {a.status === "UNREAD" && (
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        disabled={!canAcknowledge || acknowledgingId === a.id}
+                        onClick={() => handleAcknowledge(a.id)}
+                        className="shrink-0 text-xs font-bold"
+                      >
+                        {acknowledgingId === a.id ? "Saving..." : "Acknowledge"}
+                      </Button>
+                    )}
+                  </div>
+                </Alert>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 2. Operational Event Audit Log */}
+      <Card className="shadow-2xs">
+        <CardHeader className="p-4 pb-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <IconHistory className="size-4 text-[var(--brand-secondary)]" />
+              <CardTitle className="text-foreground text-sm font-bold">
+                Operational Event Audit Log ({filteredEvents.length})
+              </CardTitle>
+            </div>
+            <Badge variant="outline" className="text-xs font-semibold">
+              Autonomous Event Stream
+            </Badge>
           </div>
-        )}
-      </div>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          {filteredEvents.length === 0 ? (
+            <div className="text-muted-foreground py-8 text-center text-xs">
+              No events found.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[200px]">Timestamp</TableHead>
+                  <TableHead className="w-[130px]">Severity</TableHead>
+                  <TableHead className="w-[220px]">Classification</TableHead>
+                  <TableHead>Operational Message</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredEvents.map((e) => (
+                  <TableRow key={e.id} className="hover:bg-muted/30">
+                    <TableCell className="text-muted-foreground text-xs font-medium">
+                      {new Date(e.created_at).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          e.severity === "CRITICAL" ? "destructive" : "outline"
+                        }
+                        className={
+                          e.severity === "INFO"
+                            ? "border-emerald-500/30 bg-emerald-500/10 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400"
+                            : e.severity === "WARNING"
+                              ? "border-amber-500/30 bg-amber-500/10 text-[10px] font-semibold text-amber-600 dark:text-amber-400"
+                              : "text-[10px] font-semibold"
+                        }
+                      >
+                        <span
+                          className={`mr-1.5 size-1.5 rounded-full ${
+                            e.severity === "CRITICAL"
+                              ? "bg-red-500"
+                              : e.severity === "WARNING"
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
+                          }`}
+                        />
+                        {e.severity}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-foreground text-xs font-bold">
+                      {e.type}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs leading-relaxed">
+                      {e.message}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </main>
   );
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 
-import { Route } from "../../src/routes/api/test.auth";
+import { Route } from "../../src/routes/api/test/auth";
 import { apiError, apiSuccess } from "../../src/server/utils/response";
 
 describe("/api/test/auth Route Handler", () => {

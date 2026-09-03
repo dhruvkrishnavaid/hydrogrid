@@ -1,8 +1,33 @@
+import {
+  IconAlertTriangle,
+  IconBolt,
+  IconCheck,
+  IconChevronDown,
+  IconCpu,
+  IconDropletFilled,
+  IconFilter,
+  IconGauge,
+  IconLayoutDashboard,
+  IconUser,
+} from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
+
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 import { useAuth } from "../lib/auth-context";
 import type { UserRole } from "../lib/types";
 import { useSSE } from "../lib/use-sse";
+import { SiteSelector } from "./SiteSelector";
 import ThemeToggle from "./ThemeToggle";
 
 export default function Header() {
@@ -18,189 +43,204 @@ export default function Header() {
   const { connectionState } = useSSE({ siteId: activeSiteId });
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--border-subtle)] bg-[var(--header-bg)] backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-y-2 px-4 py-2 sm:px-6">
-        {/* Brand & Active Operational Station Context */}
+    <header className="border-border/80 bg-background/90 sticky top-0 z-50 border-b backdrop-blur-md">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-y-2.5 px-4 py-2.5 sm:px-6">
+        {/* Brand & Active Station */}
         <div className="flex items-center gap-3">
           <Link
             to="/"
-            className="text-decoration-none flex items-center gap-2.5"
+            className="flex items-center gap-2.5 transition hover:opacity-90"
           >
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-[var(--brand-primary)] font-mono text-[11px] font-bold text-white">
-              HG
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--brand-primary)] text-white shadow-xs">
+              <IconDropletFilled className="size-4.5 text-[var(--color-brand-sneeze)]" />
             </div>
             <div className="flex flex-col">
-              <span className="font-mono text-xs font-black tracking-wider text-[var(--text-primary)] uppercase">
+              <span className="font-display text-foreground text-sm font-extrabold tracking-tight">
                 HydroGrid
               </span>
-              <span className="text-[9px] font-semibold tracking-wider text-[var(--text-muted)] uppercase">
-                Operations
+              <span className="text-muted-foreground text-[10px] font-semibold tracking-wide">
+                Autonomous Water Intelligence
               </span>
             </div>
           </Link>
 
-          {isStationEntered && activeSite && (
-            <>
-              <div className="hidden h-4 w-px bg-[var(--border-subtle)] sm:block" />
-
-              <div className="flex items-center gap-2 font-mono text-xs">
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-bold text-[var(--text-primary)] uppercase">
-                    {activeSite.name}
-                  </span>
-                  <span className="hidden text-[9px] text-[var(--text-dim)] md:inline">
-                    {activeSite.location ?? "Erode Regional Station"}
-                  </span>
-                </div>
-
-                <button
-                  onClick={exitStation}
-                  className="rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--text-muted)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
-                  title="Switch to another water station"
-                >
-                  Switch
-                </button>
+          {isStationEntered && activeSite ? (
+            <div className="border-border/80 flex items-center gap-2 border-l pl-3">
+              <div className="flex flex-col">
+                <span className="text-foreground text-xs font-bold">
+                  {activeSite.name}
+                </span>
+                <span className="text-muted-foreground hidden text-[10px] md:inline">
+                  {activeSite.location ?? "Regional Facility"}
+                </span>
               </div>
-            </>
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={exitStation}
+                className="text-muted-foreground hover:text-foreground h-6 px-2 text-[11px] font-semibold"
+                title="Switch station"
+              >
+                Switch
+              </Button>
+            </div>
+          ) : (
+            <div className="border-border/80 border-l pl-3">
+              <SiteSelector />
+            </div>
           )}
 
-          <div className="hidden h-4 w-px bg-[var(--border-subtle)] sm:block" />
-
-          {/* SSE Connection Status */}
-          <div
-            className="flex items-center gap-1.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-0.5"
+          {/* Real-time SSE Telemetry Status Badge */}
+          <Badge
+            variant="outline"
+            className="border-border/80 bg-card/60 hidden items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold sm:flex"
             title={`Real-Time Telemetry: ${connectionState}`}
           >
             <span
-              className={`h-1.5 w-1.5 rounded-full ${
+              className={`h-2 w-2 rounded-full ${
                 connectionState === "connected"
-                  ? "bg-[var(--state-safe-text)]"
+                  ? "animate-pulse bg-emerald-500 shadow-xs shadow-emerald-500/50"
                   : connectionState === "connecting"
-                    ? "animate-pulse bg-[var(--state-warn-text)]"
-                    : "bg-[var(--state-danger-text)]"
+                    ? "animate-ping bg-amber-500"
+                    : "bg-rose-500"
               }`}
             />
-            <span className="font-mono text-[9px] font-bold tracking-wider text-[var(--text-muted)] uppercase">
+            <span className="text-muted-foreground">
               {connectionState === "connected"
                 ? "Live Telemetry"
                 : connectionState === "connecting"
-                  ? "Connecting"
-                  : "Offline"}
+                  ? "Reconnecting..."
+                  : "Telemetry Offline"}
             </span>
-          </div>
+          </Badge>
         </div>
 
-        {/* Structured Horizontal Navigation */}
-        <nav className="flex items-center gap-1 overflow-x-auto py-0.5 text-xs font-semibold">
-          {/* OVERVIEW */}
+        {/* Primary Navigation Tabs */}
+        <nav className="flex items-center gap-1 overflow-x-auto py-0.5 text-xs font-medium">
           <Link
             to="/"
-            className="rounded px-2.5 py-1 text-[var(--text-muted)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition"
             activeProps={{
-              className:
-                "bg-[var(--bg-subtle)] text-[var(--brand-primary)] font-bold",
+              className: "bg-muted font-bold text-foreground shadow-2xs",
             }}
           >
-            Dashboard
+            <IconLayoutDashboard className="size-3.5" />
+            <span>Dashboard</span>
           </Link>
 
-          <div className="mx-1 h-3.5 w-px bg-[var(--border-subtle)]" />
+          <Link
+            to="/water-quality"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition"
+            activeProps={{
+              className: "bg-muted font-bold text-foreground shadow-2xs",
+            }}
+          >
+            <IconDropletFilled className="size-3.5 text-sky-600 dark:text-sky-400" />
+            <span>Water Quality</span>
+          </Link>
 
-          {/* MONITORING GROUP */}
-          <div className="flex items-center gap-0.5">
-            <Link
-              to="/water-quality"
-              className="rounded px-2 py-1 text-[var(--text-muted)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
-              activeProps={{
-                className:
-                  "bg-[var(--bg-subtle)] text-[var(--brand-primary)] font-bold",
-              }}
-            >
-              Water Quality
-            </Link>
-            <Link
-              to="/purification"
-              className="rounded px-2 py-1 text-[var(--text-muted)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
-              activeProps={{
-                className:
-                  "bg-[var(--bg-subtle)] text-[var(--brand-primary)] font-bold",
-              }}
-            >
-              Purification
-            </Link>
-            <Link
-              to="/flow"
-              className="rounded px-2 py-1 text-[var(--text-muted)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
-              activeProps={{
-                className:
-                  "bg-[var(--bg-subtle)] text-[var(--brand-primary)] font-bold",
-              }}
-            >
-              Flow & Leaks
-            </Link>
-            <Link
-              to="/devices"
-              className="rounded px-2 py-1 text-[var(--text-muted)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
-              activeProps={{
-                className:
-                  "bg-[var(--bg-subtle)] text-[var(--brand-primary)] font-bold",
-              }}
-            >
-              Devices
-            </Link>
-          </div>
+          <Link
+            to="/purification"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition"
+            activeProps={{
+              className: "bg-muted font-bold text-foreground shadow-2xs",
+            }}
+          >
+            <IconFilter className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Purification</span>
+          </Link>
 
-          <div className="mx-1 h-3.5 w-px bg-[var(--border-subtle)]" />
+          <Link
+            to="/flow"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition"
+            activeProps={{
+              className: "bg-muted font-bold text-foreground shadow-2xs",
+            }}
+          >
+            <IconGauge className="size-3.5 text-amber-600 dark:text-amber-400" />
+            <span>Flow & Leaks</span>
+          </Link>
 
-          {/* OPERATIONS GROUP */}
-          <div className="flex items-center gap-0.5">
-            <Link
-              to="/alerts"
-              className="rounded px-2 py-1 text-[var(--text-muted)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
-              activeProps={{
-                className:
-                  "bg-[var(--bg-subtle)] text-[var(--brand-primary)] font-bold",
-              }}
-            >
-              Alerts
-            </Link>
-            <Link
-              to="/simulator"
-              className="flex items-center gap-1 rounded border border-[var(--border-strong)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-[11px] font-bold text-[var(--text-primary)] transition hover:bg-[var(--bg-subtle)]"
-              activeProps={{
-                className:
-                  "border-[var(--brand-primary)] bg-[var(--bg-subtle)] font-extrabold",
-              }}
-            >
-              <span>⚡</span>
-              <span>Simulator</span>
-            </Link>
-          </div>
+          <Link
+            to="/devices"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition"
+            activeProps={{
+              className: "bg-muted font-bold text-foreground shadow-2xs",
+            }}
+          >
+            <IconCpu className="size-3.5" />
+            <span>Devices</span>
+          </Link>
+
+          <Link
+            to="/alerts"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition"
+            activeProps={{
+              className: "bg-muted font-bold text-foreground shadow-2xs",
+            }}
+          >
+            <IconAlertTriangle className="size-3.5 text-rose-600 dark:text-rose-400" />
+            <span>Alerts</span>
+          </Link>
+
+          <Link
+            to="/simulator"
+            className="border-border/80 bg-card text-foreground hover:bg-muted ml-1 flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-semibold transition"
+            activeProps={{
+              className:
+                "border-[var(--brand-primary)] bg-muted font-bold text-foreground shadow-2xs",
+            }}
+          >
+            <IconBolt className="size-3.5 text-amber-500" />
+            <span>Simulator Lab</span>
+          </Link>
         </nav>
 
-        {/* Role Controller & Theme Toggle */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Persona Switcher */}
-          <div className="flex items-center rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-0.5">
-            <span className="hidden px-1.5 font-mono text-[9px] font-bold text-[var(--text-dim)] uppercase sm:inline">
-              Role:
-            </span>
-            {(["ADMIN", "OPERATOR", "VIEWER"] as Array<UserRole>).map((r) => (
-              <button
-                key={r}
-                disabled={isAuthenticating}
-                onClick={() => useDemoPersona(r)}
-                className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold transition disabled:opacity-50 ${
-                  role === r
-                    ? "bg-[var(--brand-primary)] text-white"
-                    : "text-[var(--text-muted)] hover:bg-[var(--bg-subtle)]"
-                }`}
-                title={`Switch active persona to ${r}`}
-              >
-                {isAuthenticating && role === r ? "..." : r}
-              </button>
-            ))}
-          </div>
+        {/* User Persona & Theme */}
+        <div className="flex items-center gap-2">
+          {/* Persona Switcher Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "border-border/80 bg-background/80 h-8 gap-1.5 px-2.5 text-xs font-semibold shadow-xs cursor-pointer",
+              )}
+              disabled={isAuthenticating}
+            >
+              <IconUser className="size-3.5 text-[var(--brand-secondary)]" />
+              <span>{role}</span>
+              <IconChevronDown className="text-muted-foreground size-3 opacity-60" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel className="text-muted-foreground text-xs">
+                Demo Persona / Role
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {(["ADMIN", "OPERATOR", "VIEWER"] as Array<UserRole>).map((r) => (
+                <DropdownMenuItem
+                  key={r}
+                  onClick={() => useDemoPersona(r)}
+                  className="flex items-center justify-between text-xs font-semibold"
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        r === "ADMIN"
+                          ? "bg-purple-500"
+                          : r === "OPERATOR"
+                            ? "bg-blue-500"
+                            : "bg-stone-400"
+                      }`}
+                    />
+                    <span>{r}</span>
+                  </div>
+                  {role === r && (
+                    <IconCheck className="size-3.5 text-[var(--brand-secondary)]" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <ThemeToggle />
         </div>

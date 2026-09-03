@@ -1,8 +1,8 @@
-**PS 26040 | JalRakshak | Backend Detailed MVP | FROZEN**
+**PS 26040 | HydroGrid | Backend Detailed MVP | FROZEN**
 
 ## 1. Purpose
 
-This page is the detailed backend implementation specification for JalRakshak MVP.
+This page is the detailed backend implementation specification for HydroGrid MVP.
 
 It expands the short **Backend MVP Team Plan** into the technical contract for backend developers and coding agents.
 
@@ -13,7 +13,7 @@ The backend is a **single TanStack Start server running on Bun**. The frontend c
 ## 2. Architecture
 
 ```
-                    JalRakshak
+                    HydroGrid
                          |
           +--------------+--------------+
           |                             |
@@ -76,18 +76,18 @@ Backend responsibilities:
 
 # 3. Technology Decisions
 
-| Area | Decision |
-| --- | --- |
-| Full-stack framework | TanStack Start |
-| Runtime | Bun |
-| Server | TanStack Start server |
-| Auth | Supabase Auth |
-| Relational DB | Supabase PostgreSQL |
-| Time-series DB | InfluxDB |
-| API style | REST + JSON |
-| Realtime | Server-Sent Events (SSE) |
-| Current device source | Backend simulator |
-| Future device transport | MQTT / HTTP |
+| Area                    | Decision                 |
+| ----------------------- | ------------------------ |
+| Full-stack framework    | TanStack Start           |
+| Runtime                 | Bun                      |
+| Server                  | TanStack Start server    |
+| Auth                    | Supabase Auth            |
+| Relational DB           | Supabase PostgreSQL      |
+| Time-series DB          | InfluxDB                 |
+| API style               | REST + JSON              |
+| Realtime                | Server-Sent Events (SSE) |
+| Current device source   | Backend simulator        |
+| Future device transport | MQTT / HTTP              |
 
 No separate Express server for MVP.
 
@@ -135,7 +135,7 @@ No custom backend login/register routes.
 
 ## Site
 
-Represents one JalRakshak installation.
+Represents one HydroGrid installation.
 
 ```
 id
@@ -395,7 +395,7 @@ Example:
       "source": {
         "ph": 5.6,
         "turbidity": 35.2,
-        "heavyMetals": 0.40,
+        "heavyMetals": 0.4,
         "dissolvedOxygen": 3.9,
         "tds": 1210,
         "electricalConductivity": 1800,

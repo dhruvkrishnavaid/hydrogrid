@@ -1,25 +1,86 @@
+import {
+  IconActivity,
+  IconAlertTriangle,
+  IconArrowRight,
+  IconBuildingFactory2,
+  IconCheck,
+  IconChevronDown,
+  IconChevronRight,
+  IconChevronUp,
+  IconCpu,
+  IconDroplet,
+  IconFilter,
+  IconGauge,
+  IconShieldCheck,
+  IconShieldX,
+  IconSparkles,
+} from "@tabler/icons-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 
+import { FlowBalanceBarChart } from "@/components/charts/FlowBalanceBarChart";
+import { PurificationHealthChart } from "@/components/charts/PurificationHealthChart";
+import { TelemetrySparkline } from "@/components/charts/TelemetrySparkline";
+import { WaterQualityAreaChart } from "@/components/charts/WaterQualityAreaChart";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth-context";
-import type { DashboardOverview } from "../lib/types";
+import type {
+  DashboardOverview,
+  FlowHistoryPoint,
+  WaterQualityHistoryPoint,
+} from "../lib/types";
 import { useSSE } from "../lib/use-sse";
 
 export const Route = createFileRoute("/")({ component: DashboardPage });
 
 function DashboardSkeleton() {
   return (
-    <main className="mx-auto max-w-7xl animate-pulse space-y-6 p-4 sm:p-6">
-      <div className="skeleton h-8 w-72" />
-      <div className="skeleton h-44 w-full" />
-      <div className="skeleton h-20 w-full" />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="skeleton h-32" />
+    <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
+      <div className="border-border/80 flex items-center justify-between border-b pb-4">
+        <Skeleton className="h-8 w-64 rounded-xl" />
+        <Skeleton className="h-8 w-36 rounded-xl" />
+      </div>
+      <Skeleton className="h-48 w-full rounded-2xl" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-20 rounded-xl" />
         ))}
       </div>
-      <div className="skeleton h-64 w-full" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-36 rounded-2xl" />
+        ))}
+      </div>
+      <Skeleton className="h-64 w-full rounded-2xl" />
     </main>
   );
 }
@@ -37,6 +98,10 @@ function DashboardPage() {
   } = useAuth();
 
   const [data, setData] = useState<DashboardOverview | null>(null);
+  const [wqHistory, setWqHistory] = useState<Array<WaterQualityHistoryPoint>>(
+    [],
+  );
+  const [flowHistory, setFlowHistory] = useState<Array<FlowHistoryPoint>>([]);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
@@ -50,8 +115,16 @@ function DashboardPage() {
 
     try {
       setError(null);
-      const overview = await api.getDashboardOverview(activeSiteId);
+      const [overview, wq, fl] = await Promise.all([
+        api.getDashboardOverview(activeSiteId),
+        api
+          .getWaterQualityHistory(activeSiteId, { interval: "5m" })
+          .catch(() => []),
+        api.getFlowHistory(activeSiteId, { interval: "5m" }).catch(() => []),
+      ]);
       setData(overview);
+      setWqHistory(wq);
+      setFlowHistory(fl);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load telemetry");
     } finally {
@@ -98,100 +171,114 @@ function DashboardPage() {
   if (!activeSiteId && sites.length === 0 && !isLoadingData) {
     return (
       <main className="mx-auto max-w-7xl p-4 sm:p-6">
-        <div className="ops-card mx-auto max-w-md space-y-4 p-8 text-center">
-          <div className="font-mono text-sm font-bold tracking-wider text-[var(--brand-primary)] uppercase">
-            HYDROGRID OPERATIONS
-          </div>
-          <h2 className="text-base font-bold text-[var(--text-primary)]">
-            No Active Station Membership
-          </h2>
-          <p className="text-xs leading-relaxed text-[var(--text-muted)]">
-            Connect to the local water station console using the pre-configured
-            administrator demo credentials.
-          </p>
-          <button
-            onClick={() => useDemoPersona("ADMIN")}
-            className="rounded bg-[var(--brand-primary)] px-4 py-2 font-mono text-xs font-bold text-white transition hover:bg-[var(--brand-secondary)]"
-          >
-            Connect as Administrator Demo
-          </button>
-        </div>
+        <Card className="mx-auto max-w-md text-center shadow-md">
+          <CardHeader className="space-y-2">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-[var(--brand-primary)]/10 text-[var(--brand-primary)] dark:bg-[var(--brand-secondary)]/20 dark:text-[var(--brand-secondary)]">
+              <IconBuildingFactory2 className="size-6" />
+            </div>
+            <span className="text-xs font-bold tracking-wider text-[var(--brand-secondary)] uppercase">
+              HydroGrid Operations
+            </span>
+            <CardTitle className="text-lg font-bold">
+              No Active Station Membership
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Connect to the local water station console using the
+              pre-configured administrator demo credentials.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <Button
+              onClick={() => useDemoPersona("ADMIN")}
+              className="font-semibold"
+            >
+              Connect as Administrator Demo
+            </Button>
+          </CardContent>
+        </Card>
       </main>
     );
   }
 
-  // 3. ENTRY / STATION SELECTION GATE (Shown when no station is entered yet)
+  // 3. Station Selection Gate
   if (!isStationEntered) {
     return (
       <main className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6">
-        <div className="border-b border-[var(--border-subtle)] pb-4">
-          <div className="font-mono text-xs font-bold tracking-wider text-[var(--brand-primary)] uppercase">
+        <div className="border-border/80 border-b pb-4">
+          <div className="text-xs font-bold tracking-wider text-[var(--brand-secondary)] uppercase">
             HydroGrid Operations Console
           </div>
-          <h1 className="mt-0.5 font-mono text-lg font-extrabold tracking-tight text-[var(--text-primary)] uppercase">
-            Select Operational Station
+          <h1 className="font-display text-foreground mt-1 text-2xl font-bold tracking-tight">
+            Select Operational Water Station
           </h1>
-          <p className="mt-1 font-mono text-xs text-[var(--text-muted)]">
-            Choose an active regional water treatment plant to enter the SCADA
-            telemetry and quality supervision console.
+          <p className="text-muted-foreground mt-1 text-xs">
+            Choose an active regional water treatment plant to enter the
+            real-time telemetry and quality supervision console.
           </p>
         </div>
 
-        <div className="space-y-4">
+        <div className="grid gap-4">
           {sites.map((site) => (
-            <div
+            <Card
               key={site.id}
-              className="ops-card p-5 transition-all hover:border-[var(--brand-secondary)]"
+              className="transition-all hover:border-[var(--brand-secondary)] hover:shadow-md"
             >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`h-2.5 w-2.5 rounded-full ${
-                        site.status === "ONLINE"
-                          ? "bg-[var(--state-safe-text)]"
-                          : site.status === "DEGRADED"
-                            ? "bg-[var(--state-warn-text)]"
-                            : "bg-[var(--state-danger-text)]"
-                      }`}
-                    />
-                    <h2 className="font-mono text-base font-extrabold text-[var(--text-primary)] uppercase">
-                      {site.name}
-                    </h2>
+              <CardHeader className="pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="bg-primary/10 text-primary dark:bg-primary/20 flex size-9 items-center justify-center rounded-xl">
+                      <IconBuildingFactory2 className="size-5 text-[var(--brand-secondary)]" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-foreground text-base font-bold">
+                        {site.name}
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        {site.location ?? "Regional Facility, Tamil Nadu"}
+                      </CardDescription>
+                    </div>
                   </div>
-
-                  <p className="font-mono text-xs text-[var(--text-muted)]">
-                    {site.location ?? "Erode Regional Station, Tamil Nadu"}
-                  </p>
-
-                  <div className="flex flex-wrap items-center gap-3 pt-2 font-mono text-xs text-[var(--text-secondary)]">
-                    <span className="rounded bg-[var(--state-safe-bg)] px-2 py-0.5 text-[11px] font-bold text-[var(--state-safe-text)]">
-                      STATUS: {site.status}
-                    </span>
-                    <span className="rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-0.5 text-[11px]">
-                      TELEMETRY: LIVE
-                    </span>
-                    <span className="rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-0.5 text-[11px]">
-                      NODE: 1/1 ONLINE
-                    </span>
-                  </div>
+                  <Badge
+                    variant={
+                      site.status === "ONLINE" ? "default" : "destructive"
+                    }
+                    className={
+                      site.status === "ONLINE"
+                        ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300"
+                        : ""
+                    }
+                  >
+                    {site.status === "ONLINE" ? "● Online" : "▲ Degraded"}
+                  </Badge>
                 </div>
-
-                <button
-                  onClick={() => enterStation(site.id)}
-                  className="rounded bg-[var(--brand-primary)] px-5 py-2.5 font-mono text-xs font-extrabold tracking-wider text-white shadow-xs transition hover:bg-[var(--brand-secondary)]"
-                >
-                  [ ENTER STATION ]
-                </button>
-              </div>
-            </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="border-border/60 flex flex-wrap items-center justify-between gap-4 border-t pt-3">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <Badge variant="outline" className="text-xs font-medium">
+                      Telemetry: Live
+                    </Badge>
+                    <Badge variant="outline" className="text-xs font-medium">
+                      Nodes: 1/1 Online
+                    </Badge>
+                  </div>
+                  <Button
+                    onClick={() => enterStation(site.id)}
+                    className="gap-1.5 font-semibold"
+                  >
+                    <span>Enter Station</span>
+                    <IconArrowRight className="size-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </main>
     );
   }
 
-  // 4. Loading state for telemetry inside the station
+  // 4. Loading state for telemetry inside station
   if (isLoadingData && !data) {
     return <DashboardSkeleton />;
   }
@@ -200,20 +287,18 @@ function DashboardPage() {
   if (error && !data) {
     return (
       <main className="mx-auto max-w-7xl p-4 sm:p-6">
-        <div className="ops-card mx-auto max-w-md space-y-3 border-[var(--state-danger-border)] bg-[var(--state-danger-bg)] p-6 text-center">
-          <h2 className="font-mono text-xs font-bold text-[var(--state-danger-text)] uppercase">
+        <Alert variant="destructive" className="mx-auto max-w-md">
+          <IconAlertTriangle className="size-4" />
+          <AlertTitle className="font-bold">
             Telemetry Connection Interrupted
-          </h2>
-          <p className="font-mono text-xs text-[var(--text-primary)]">
-            {error}
-          </p>
-          <button
-            onClick={fetchOverview}
-            className="rounded bg-[var(--brand-primary)] px-3.5 py-1.5 font-mono text-xs font-bold text-white"
-          >
-            Retry Telemetry Sync
-          </button>
-        </div>
+          </AlertTitle>
+          <AlertDescription className="mt-1 text-xs">{error}</AlertDescription>
+          <div className="mt-3">
+            <Button size="sm" variant="outline" onClick={fetchOverview}>
+              Retry Telemetry Sync
+            </Button>
+          </div>
+        </Alert>
       </main>
     );
   }
@@ -239,7 +324,6 @@ function DashboardPage() {
 
   const isSafeSystem = isGatePass && isReleaseAllowed && !isLeak;
 
-  // Contextual assessment points
   const assessmentPoints = isSafeSystem
     ? [
         "All 9 physicochemical water quality parameters within standard operating limits",
@@ -261,819 +345,1349 @@ function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
-      {/* 1. STATION CONTEXT & STATUS HEADER */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
-        <div className="flex flex-wrap items-center gap-2.5">
+      {/* 1. Station Context & Status Bar */}
+      <div className="border-border/80 flex flex-wrap items-center justify-between gap-3 border-b pb-3.5">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <span
-              className={`h-2.5 w-2.5 rounded-full ${
+              className={`size-2.5 rounded-full ${
                 site.status === "ONLINE"
-                  ? "bg-[var(--state-safe-text)]"
-                  : site.status === "DEGRADED"
-                    ? "bg-[var(--state-warn-text)]"
-                    : "bg-[var(--state-danger-text)]"
+                  ? "animate-pulse bg-emerald-500 shadow-xs shadow-emerald-500/50"
+                  : "bg-rose-500"
               }`}
             />
-            <h1 className="font-mono text-base font-extrabold tracking-tight text-[var(--text-primary)] uppercase">
-              {site.name} — Station Overview
+            <h1 className="font-display text-foreground text-lg font-extrabold tracking-tight">
+              {site.name} Overview
             </h1>
           </div>
-
-          <span className="font-mono text-xs text-[var(--border-strong)]">
-            |
-          </span>
-
-          <span className="font-mono text-xs text-[var(--text-muted)]">
-            {site.location ?? "Erode Regional Station, Tamil Nadu"}
+          <Separator orientation="vertical" className="h-4" />
+          <span className="text-muted-foreground text-xs">
+            {site.location ?? "Regional Facility, Tamil Nadu"}
           </span>
         </div>
 
-        <div className="flex items-center gap-3 font-mono text-xs text-[var(--text-muted)]">
+        <div className="text-muted-foreground flex items-center gap-2 text-xs">
           <span>
             Telemetry Sync:{" "}
-            <strong className="text-[var(--text-primary)]">
+            <strong className="text-foreground">
               {new Date(data.lastUpdated).toLocaleTimeString()}
             </strong>
           </span>
           <Link
             to="/simulator"
-            className="rounded border border-[var(--border-strong)] bg-[var(--bg-surface)] px-2.5 py-0.5 font-mono text-[11px] font-bold text-[var(--text-primary)] transition hover:bg-[var(--bg-subtle)]"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "xs" }),
+              "h-7 gap-1 font-semibold",
+            )}
           >
-            ⚡ Test Scenarios
+            <IconSparkles className="size-3 text-amber-500" />
+            <span>Test Scenarios</span>
           </Link>
         </div>
       </div>
 
-      {/* 2. EXECUTIVE DECISION HERO (Answers: "Can this plant safely release water right now?") */}
-      <div
-        className={`ops-card p-5 transition-colors ${
+      {/* 2. Executive Decision Hero Banner */}
+      <Card
+        className={`border transition-colors ${
           isSafeSystem
-            ? "border-[var(--state-safe-border)] bg-[var(--state-safe-bg)]"
-            : "border-[var(--state-danger-border)] bg-[var(--state-danger-bg)]"
+            ? "border-emerald-500/40 bg-emerald-500/5 dark:border-emerald-500/30 dark:bg-emerald-950/20"
+            : "border-rose-500/40 bg-rose-500/5 dark:border-rose-500/30 dark:bg-rose-950/20"
         }`}
       >
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-center">
-          {/* Main Decision Badge & Score */}
-          <div className="space-y-2 lg:col-span-6">
-            <div className="flex items-center gap-2">
-              <span
-                className={`font-mono text-xs font-extrabold tracking-wider uppercase ${
-                  isSafeSystem
-                    ? "text-[var(--state-safe-text)]"
-                    : "text-[var(--state-danger-text)]"
-                }`}
-              >
-                {isSafeSystem
-                  ? "● SYSTEM STATUS: SAFE TO RELEASE"
-                  : "▲ SYSTEM STATUS: SAFETY LOCKOUT ENGAGED"}
-              </span>
-            </div>
-
-            <div className="flex items-baseline gap-3">
-              <div className="flex items-baseline gap-1">
-                <span
-                  className={`telemetry-val text-5xl font-black ${
-                    safety.score >= 80
-                      ? "text-[var(--state-safe-text)]"
-                      : safety.score >= 50
-                        ? "text-[var(--state-warn-text)]"
-                        : "text-[var(--state-danger-text)]"
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-center">
+            {/* Safety Score & Status */}
+            <div className="space-y-3 lg:col-span-6">
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant={isSafeSystem ? "default" : "destructive"}
+                  className={`gap-1.5 px-3 py-1 text-xs font-bold ${
+                    isSafeSystem
+                      ? "bg-emerald-600 text-white hover:bg-emerald-600/90 dark:bg-emerald-500"
+                      : ""
                   }`}
                 >
-                  {safety.score}
-                </span>
-                <span className="font-mono text-sm font-semibold text-[var(--text-muted)]">
-                  / 100
-                </span>
+                  {isSafeSystem ? (
+                    <IconShieldCheck className="size-4" />
+                  ) : (
+                    <IconShieldX className="size-4" />
+                  )}
+                  <span>
+                    {isSafeSystem
+                      ? "SAFE TO RELEASE"
+                      : "SAFETY LOCKOUT ENGAGED"}
+                  </span>
+                </Badge>
+                <Badge variant="outline" className="text-xs font-semibold">
+                  Gate: {safety.qualityGate}
+                </Badge>
               </div>
 
-              <div className="space-y-0.5 font-mono text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="text-[var(--text-muted)]">
-                    QUALITY GATE:
-                  </span>
+              <div className="flex items-baseline gap-4">
+                <div className="flex items-baseline gap-1.5">
                   <span
-                    className={`py-0.2 rounded px-1.5 text-[11px] font-extrabold ${
-                      isGatePass
-                        ? "border border-[var(--state-safe-border)] bg-[var(--bg-surface)] text-[var(--state-safe-text)]"
-                        : "border border-[var(--state-danger-border)] bg-[var(--bg-surface)] text-[var(--state-danger-text)]"
+                    className={`telemetry-val text-6xl font-black ${
+                      safety.score >= 80
+                        ? "text-emerald-700 dark:text-emerald-400"
+                        : safety.score >= 50
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-rose-600 dark:text-rose-400"
                     }`}
                   >
-                    {safety.qualityGate}
+                    {safety.score}
+                  </span>
+                  <span className="text-muted-foreground text-sm font-semibold">
+                    / 100
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[var(--text-muted)]">
-                    WATER RELEASE:
-                  </span>
-                  <span
-                    className={`py-0.2 rounded px-1.5 text-[11px] font-extrabold ${
-                      isReleaseAllowed
-                        ? "border border-[var(--state-safe-border)] bg-[var(--bg-surface)] text-[var(--state-safe-text)]"
-                        : "border border-[var(--state-danger-border)] bg-[var(--bg-surface)] text-[var(--state-danger-text)]"
-                    }`}
-                  >
-                    {safety.waterRelease}
-                  </span>
+
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">
+                      Water Release:
+                    </span>
+                    <Badge
+                      variant={isReleaseAllowed ? "default" : "destructive"}
+                      className={`text-xs font-extrabold ${
+                        isReleaseAllowed
+                          ? "bg-emerald-600 text-white hover:bg-emerald-600/90 dark:bg-emerald-500"
+                          : ""
+                      }`}
+                    >
+                      {safety.waterRelease}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Confidence:</span>
+                    <span className="telemetry-val text-foreground font-bold">
+                      {safety.confidence}%
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              {/* Progress gauge */}
+              <div className="w-full max-w-sm pt-1">
+                <Progress
+                  value={safety.score}
+                  className="h-2.5 w-full"
+                  indicatorClassName={
+                    safety.score >= 80
+                      ? "bg-emerald-600 dark:bg-emerald-500"
+                      : safety.score >= 50
+                        ? "bg-amber-500"
+                        : "bg-rose-500"
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Actuators & Edge Fleet States */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:col-span-6">
+              <Card className="border-border/80 bg-background/80 shadow-2xs">
+                <CardHeader className="p-3 pb-1">
+                  <CardDescription className="text-[11px] font-semibold uppercase">
+                    Feed Pump
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <span
+                    className={`text-sm font-bold ${
+                      isPumpRunning
+                        ? "text-emerald-700 dark:text-emerald-400"
+                        : "font-extrabold text-rose-600 dark:text-rose-400"
+                    }`}
+                  >
+                    {purification.pump}
+                  </span>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/80 bg-background/80 shadow-2xs">
+                <CardHeader className="p-3 pb-1">
+                  <CardDescription className="text-[11px] font-semibold uppercase">
+                    Isolation Valve
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <span
+                    className={`text-sm font-bold ${
+                      isValveOpen
+                        ? "text-emerald-700 dark:text-emerald-400"
+                        : "font-extrabold text-rose-600 dark:text-rose-400"
+                    }`}
+                  >
+                    {flow.valveStatus}
+                  </span>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/80 bg-background/80 shadow-2xs">
+                <CardHeader className="p-3 pb-1">
+                  <CardDescription className="text-[11px] font-semibold uppercase">
+                    Edge Nodes
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <span className="text-foreground text-sm font-bold">
+                    {devices.filter((d) => d.status === "ONLINE").length}/
+                    {devices.length} Online
+                  </span>
+                </CardContent>
+              </Card>
+
+              <Card className="border-border/80 bg-background/80 shadow-2xs">
+                <CardHeader className="p-3 pb-1">
+                  <CardDescription className="text-[11px] font-semibold uppercase">
+                    Data Integrity
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <span className="telemetry-val text-foreground text-sm font-bold">
+                    {safety.confidence}% Valid
+                  </span>
+                </CardContent>
+              </Card>
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Supporting Actuator & Node State Grid */}
-          <div className="grid grid-cols-2 gap-2 font-mono text-xs sm:grid-cols-4 lg:col-span-6">
-            <div className="space-y-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2.5">
-              <span className="block text-[9px] text-[var(--text-dim)] uppercase">
-                Feed Pump
-              </span>
-              <span
-                className={`font-bold ${
-                  isPumpRunning
-                    ? "text-[var(--state-safe-text)]"
-                    : "font-black text-[var(--state-danger-text)]"
-                }`}
-              >
-                {purification.pump}
-              </span>
+      {/* 2.5 At-A-Glance Critical KPI Sparkline Cards */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {/* pH Potability Card */}
+        <Card className="border-border/80 overflow-hidden shadow-2xs">
+          <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+            <div>
+              <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                pH Potability Level
+              </CardDescription>
+              <div className="mt-0.5 flex items-baseline gap-2">
+                <span className="telemetry-val text-foreground text-xl font-black">
+                  {latestReading.ph.toFixed(2)}
+                </span>
+                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  {latestReading.ph >= 6.5 && latestReading.ph <= 8.5
+                    ? "✓ Optimal"
+                    : "⚠ Outside Band"}
+                </span>
+              </div>
             </div>
+            <Badge
+              variant="outline"
+              className="border-emerald-500/30 bg-emerald-500/10 text-[10px] font-bold text-emerald-700 dark:text-emerald-400"
+            >
+              6.5–8.5
+            </Badge>
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            <TelemetrySparkline
+              data={
+                wqHistory.length
+                  ? wqHistory.map((p) => ({ value: p.ph }))
+                  : [
+                      { value: 7.3 },
+                      { value: 7.35 },
+                      { value: 7.32 },
+                      { value: latestReading.ph },
+                    ]
+              }
+              color="#10b981"
+              gradientId="spark-ph"
+              height={36}
+            />
+          </CardContent>
+        </Card>
 
-            <div className="space-y-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2.5">
-              <span className="block text-[9px] text-[var(--text-dim)] uppercase">
-                Isolation Valve
-              </span>
-              <span
-                className={`font-bold ${
-                  isValveOpen
-                    ? "text-[var(--state-safe-text)]"
-                    : "font-black text-[var(--state-danger-text)]"
-                }`}
-              >
-                {flow.valveStatus}
-              </span>
+        {/* Optical Turbidity Card */}
+        <Card className="border-border/80 overflow-hidden shadow-2xs">
+          <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+            <div>
+              <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                Optical Turbidity
+              </CardDescription>
+              <div className="mt-0.5 flex items-baseline gap-2">
+                <span className="telemetry-val text-foreground text-xl font-black">
+                  {latestReading.turbidity.toFixed(2)}{" "}
+                  <span className="text-muted-foreground text-xs font-semibold">
+                    NTU
+                  </span>
+                </span>
+                <span className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400">
+                  {latestReading.turbidity < 5.0 ? "✓ Clear" : "⚠ High Silt"}
+                </span>
+              </div>
             </div>
+            <Badge
+              variant="outline"
+              className="border-cyan-500/30 bg-cyan-500/10 text-[10px] font-bold text-cyan-700 dark:text-cyan-400"
+            >
+              &lt; 5.0 NTU
+            </Badge>
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            <TelemetrySparkline
+              data={
+                wqHistory.length
+                  ? wqHistory.map((p) => ({ value: p.turbidity }))
+                  : [
+                      { value: 1.1 },
+                      { value: 0.9 },
+                      { value: 0.85 },
+                      { value: latestReading.turbidity },
+                    ]
+              }
+              color="#06b6d4"
+              gradientId="spark-turb"
+              height={36}
+            />
+          </CardContent>
+        </Card>
 
-            <div className="space-y-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2.5">
-              <span className="block text-[9px] text-[var(--text-dim)] uppercase">
-                Edge Nodes
-              </span>
-              <span className="font-bold text-[var(--state-safe-text)]">
-                {devices.filter((d) => d.status === "ONLINE").length}/
-                {devices.length} ONLINE
-              </span>
+        {/* Total Dissolved Solids Card */}
+        <Card className="border-border/80 overflow-hidden shadow-2xs">
+          <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+            <div>
+              <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                Mineral TDS Load
+              </CardDescription>
+              <div className="mt-0.5 flex items-baseline gap-2">
+                <span className="telemetry-val text-foreground text-xl font-black">
+                  {Math.round(latestReading.tds)}{" "}
+                  <span className="text-muted-foreground text-xs font-semibold">
+                    ppm
+                  </span>
+                </span>
+                <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                  {latestReading.tds < 500 ? "✓ Safe Load" : "⚠ High Solids"}
+                </span>
+              </div>
             </div>
+            <Badge
+              variant="outline"
+              className="border-amber-500/30 bg-amber-500/10 text-[10px] font-bold text-amber-700 dark:text-amber-400"
+            >
+              &lt; 500 ppm
+            </Badge>
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            <TelemetrySparkline
+              data={
+                wqHistory.length
+                  ? wqHistory.map((p) => ({ value: p.tds }))
+                  : [
+                      { value: 150 },
+                      { value: 145 },
+                      { value: 148 },
+                      { value: latestReading.tds },
+                    ]
+              }
+              color="#f59e0b"
+              gradientId="spark-tds"
+              height={36}
+            />
+          </CardContent>
+        </Card>
 
-            <div className="space-y-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2.5">
-              <span className="block text-[9px] text-[var(--text-dim)] uppercase">
-                Confidence
-              </span>
-              <span
-                className={`telemetry-val font-bold ${
-                  safety.confidence >= 85
-                    ? "text-[var(--state-safe-text)]"
-                    : "text-[var(--state-warn-text)]"
-                }`}
-              >
-                {safety.confidence}%
-              </span>
+        {/* Differential Flow Mismatch Card */}
+        <Card className="border-border/80 overflow-hidden shadow-2xs">
+          <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+            <div>
+              <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                Differential Flow Mismatch
+              </CardDescription>
+              <div className="mt-0.5 flex items-baseline gap-2">
+                <span
+                  className={`telemetry-val text-xl font-black ${
+                    isLeak
+                      ? "text-rose-600 dark:text-rose-400"
+                      : "text-foreground"
+                  }`}
+                >
+                  {flow.mismatchPercent.toFixed(1)}%
+                </span>
+                <span
+                  className={`text-[11px] font-semibold ${
+                    isLeak
+                      ? "font-bold text-rose-600 dark:text-rose-400"
+                      : "text-emerald-600 dark:text-emerald-400"
+                  }`}
+                >
+                  {isLeak ? "⚠ Leak Active" : "✓ No Loss"}
+                </span>
+              </div>
             </div>
-          </div>
-        </div>
+            <Badge
+              variant="outline"
+              className={`text-[10px] font-bold ${
+                isLeak
+                  ? "border-red-500/30 bg-red-500/10 text-red-700"
+                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+              }`}
+            >
+              Trip: 15.0%
+            </Badge>
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            <TelemetrySparkline
+              data={
+                flowHistory.length
+                  ? flowHistory.map((p) => ({ value: p.differencePercent }))
+                  : [
+                      { value: 0 },
+                      { value: 0.1 },
+                      { value: 0 },
+                      { value: flow.mismatchPercent },
+                    ]
+              }
+              color={isLeak ? "#ef4444" : "#10b981"}
+              gradientId="spark-flow"
+              height={36}
+            />
+          </CardContent>
+        </Card>
       </div>
 
-      {/* 3. OPERATIONAL LIFECYCLE (Physical flow: 1 Intake -> 2 Sensing -> 3 Treatment -> 4 Hydraulics -> 5 Quality Gate -> 6 Release) */}
-      <div className="ops-card space-y-3 p-4">
-        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-          <span className="font-mono text-xs font-bold tracking-wider text-[var(--text-primary)] uppercase">
-            Operational Lifecycle & Verification Flow
-          </span>
-          <span className="font-mono text-[10px] text-[var(--text-dim)]">
-            Continuous SCADA Supervision
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 font-mono text-xs sm:grid-cols-3 lg:grid-cols-6">
-          {/* Step 1 */}
-          <div className="space-y-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-2.5">
-            <span className="block text-[9px] font-bold text-[var(--text-dim)] uppercase">
-              1. Intake
-            </span>
-            <span className="block font-bold text-[var(--text-primary)]">
-              Raw Source
-            </span>
-            <span className="block font-sans text-[10px] text-[var(--text-muted)]">
-              Well extraction
-            </span>
-          </div>
-
-          {/* Step 2 */}
-          <Link
-            to="/water-quality"
-            className="block space-y-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-2.5 transition hover:border-[var(--brand-secondary)]"
-          >
-            <span className="block text-[9px] font-bold text-[var(--text-dim)] uppercase">
-              2. Sensing
-            </span>
-            <span
-              className={`block font-bold ${
-                isGatePass
-                  ? "text-[var(--state-safe-text)]"
-                  : "text-[var(--state-danger-text)]"
-              }`}
-            >
-              9 Probes {isGatePass ? "●" : "▲"}
-            </span>
-            <span className="block font-sans text-[10px] text-[var(--text-muted)]">
-              Physicochemical
-            </span>
-          </Link>
-
-          {/* Step 3 */}
-          <Link
-            to="/purification"
-            className="block space-y-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-2.5 transition hover:border-[var(--brand-secondary)]"
-          >
-            <span className="block text-[9px] font-bold text-[var(--text-dim)] uppercase">
-              3. Treatment
-            </span>
-            <span
-              className={`block font-bold ${
-                purification.mode === "NORMAL"
-                  ? "text-[var(--state-safe-text)]"
-                  : "text-[var(--state-warn-text)]"
-              }`}
-            >
-              4 Stages {purification.mode === "NORMAL" ? "●" : "◆"}
-            </span>
-            <span className="block font-sans text-[10px] text-[var(--text-muted)]">
-              Filter train
-            </span>
-          </Link>
-
-          {/* Step 4 */}
-          <Link
-            to="/flow"
-            className="block space-y-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-2.5 transition hover:border-[var(--brand-secondary)]"
-          >
-            <span className="block text-[9px] font-bold text-[var(--text-dim)] uppercase">
-              4. Hydraulics
-            </span>
-            <span
-              className={`block font-bold ${
-                !isLeak
-                  ? "text-[var(--state-safe-text)]"
-                  : "font-black text-[var(--state-danger-text)]"
-              }`}
-            >
-              Diff: {flow.mismatchPercent.toFixed(1)}% {!isLeak ? "●" : "▲"}
-            </span>
-            <span className="block font-sans text-[10px] text-[var(--text-muted)]">
-              Leak check
-            </span>
-          </Link>
-
-          {/* Step 5 */}
-          <div className="space-y-1 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface-subtle)] p-2.5">
-            <span className="block text-[9px] font-bold text-[var(--text-dim)] uppercase">
-              5. Quality Gate
-            </span>
-            <span
-              className={`block font-bold ${
-                isGatePass
-                  ? "text-[var(--state-safe-text)]"
-                  : "text-[var(--state-danger-text)]"
-              }`}
-            >
-              {safety.qualityGate}
-            </span>
-            <span className="block font-sans text-[10px] text-[var(--text-muted)]">
-              Rule evaluation
-            </span>
-          </div>
-
-          {/* Step 6 */}
-          <div
-            className={`space-y-1 rounded border p-2.5 ${
-              isReleaseAllowed
-                ? "border-[var(--state-safe-border)] bg-[var(--state-safe-bg)] text-[var(--state-safe-text)]"
-                : "border-[var(--state-danger-border)] bg-[var(--state-danger-bg)] font-black text-[var(--state-danger-text)]"
-            }`}
-          >
-            <span className="block text-[9px] font-bold uppercase opacity-75">
-              6. Release
-            </span>
-            <span className="block font-bold">{safety.waterRelease}</span>
-            <span className="block font-sans text-[10px] opacity-90">
-              Distribution valve
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. CURRENT ASSESSMENT (Answers: "Why is the system safe or unsafe?") */}
-      <div className="ops-card space-y-2 p-4">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-bold tracking-wider text-[var(--text-primary)] uppercase">
-            Operational Assessment Summary
-          </span>
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              isSafeSystem
-                ? "bg-[var(--state-safe-text)]"
-                : "bg-[var(--state-danger-text)]"
-            }`}
+      {/* 2.6 Primary Real-Time Visual Analytics Section (shadcn Charts) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="lg:col-span-7">
+          <WaterQualityAreaChart
+            history={wqHistory}
+            currentReading={latestReading}
+            className="h-full shadow-2xs"
           />
         </div>
-
-        <ul className="space-y-1 font-sans text-xs text-[var(--text-secondary)]">
-          {assessmentPoints.map((pt, idx) => (
-            <li key={idx} className="flex items-start gap-2">
-              <span className="mt-0.5 font-mono font-bold text-[var(--text-muted)]">
-                {isSafeSystem ? "✓" : "▲"}
-              </span>
-              <span>{pt}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="lg:col-span-5">
+          <FlowBalanceBarChart
+            flow={data.flow}
+            history={flowHistory}
+            className="h-full shadow-2xs"
+          />
+        </div>
       </div>
 
-      {/* 5. MAJOR SUBSYSTEM HUBS (Clean drill-down entry points) */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Water Quality Subsystem */}
-        <div className="ops-card flex flex-col justify-between space-y-3 p-4">
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <span className="font-mono text-xs font-bold text-[var(--text-primary)] uppercase">
-                Water Quality
+      {/* 2.7 4-Stage Purification Multi-Barrier Performance */}
+      <PurificationHealthChart
+        purification={data.purification}
+        className="shadow-2xs"
+      />
+
+      {/* 3. Operational Lifecycle & Verification Chain */}
+      <Card className="shadow-2xs">
+        <CardHeader className="p-4 pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-foreground text-xs font-bold tracking-wider uppercase">
+              Autonomous Decision & Verification Lifecycle
+            </CardTitle>
+            <Badge variant="outline" className="text-[10px]">
+              Continuous Monitoring
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="border-border/80 bg-muted/40 space-y-1 rounded-xl border p-3">
+              <span className="text-muted-foreground block text-[10px] font-bold uppercase">
+                1. Intake
+              </span>
+              <span className="text-foreground block text-xs font-bold">
+                Raw Source
+              </span>
+              <span className="text-muted-foreground block text-[11px]">
+                Well extraction
+              </span>
+            </div>
+
+            <Link
+              to="/water-quality"
+              className="group border-border/80 bg-muted/40 hover:bg-muted/70 block space-y-1 rounded-xl border p-3 transition hover:border-[var(--brand-secondary)]"
+            >
+              <span className="text-muted-foreground block text-[10px] font-bold uppercase">
+                2. Sensing
               </span>
               <span
-                className={`py-0.2 rounded px-1.5 font-mono text-[9px] font-bold ${
+                className={`block text-xs font-bold ${
                   isGatePass
-                    ? "bg-[var(--state-safe-bg)] text-[var(--state-safe-text)]"
-                    : "bg-[var(--state-danger-bg)] text-[var(--state-danger-text)]"
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-rose-600 dark:text-rose-400"
                 }`}
               >
-                {isGatePass ? "SAFE" : "EXCEEDED"}
+                9 Channels {isGatePass ? "✓" : "▲"}
               </span>
-            </div>
-            <p className="font-sans text-xs leading-relaxed text-[var(--text-muted)]">
-              9 physicochemical parameters monitored in real-time against WHO
-              standards.
-            </p>
-            <div className="mt-2 font-mono text-xs text-[var(--text-secondary)]">
-              <span>pH {latestReading.ph.toFixed(2)}</span> ·{" "}
-              <span>Turbidity {latestReading.turbidity.toFixed(1)} NTU</span>
-            </div>
-          </div>
+              <span className="text-muted-foreground block text-[11px]">
+                Physicochemical
+              </span>
+            </Link>
 
-          <Link
-            to="/water-quality"
-            className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-2 font-mono text-xs font-bold text-[var(--brand-secondary)] hover:underline"
-          >
-            <span>Inspect Evidence</span>
-            <span>&rarr;</span>
-          </Link>
-        </div>
-
-        {/* Purification Subsystem */}
-        <div className="ops-card flex flex-col justify-between space-y-3 p-4">
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <span className="font-mono text-xs font-bold text-[var(--text-primary)] uppercase">
-                Purification
+            <Link
+              to="/purification"
+              className="group border-border/80 bg-muted/40 hover:bg-muted/70 block space-y-1 rounded-xl border p-3 transition hover:border-[var(--brand-secondary)]"
+            >
+              <span className="text-muted-foreground block text-[10px] font-bold uppercase">
+                3. Treatment
               </span>
               <span
-                className={`py-0.2 rounded px-1.5 font-mono text-[9px] font-bold ${
+                className={`block text-xs font-bold ${
                   purification.mode === "NORMAL"
-                    ? "bg-[var(--state-safe-bg)] text-[var(--state-safe-text)]"
-                    : "bg-[var(--state-warn-bg)] text-[var(--state-warn-text)]"
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-amber-600 dark:text-amber-400"
                 }`}
+              >
+                4 Stages {purification.mode === "NORMAL" ? "✓" : "◆"}
+              </span>
+              <span className="text-muted-foreground block text-[11px]">
+                Filtration train
+              </span>
+            </Link>
+
+            <Link
+              to="/flow"
+              className="group border-border/80 bg-muted/40 hover:bg-muted/70 block space-y-1 rounded-xl border p-3 transition hover:border-[var(--brand-secondary)]"
+            >
+              <span className="text-muted-foreground block text-[10px] font-bold uppercase">
+                4. Hydraulics
+              </span>
+              <span
+                className={`block text-xs font-bold ${
+                  !isLeak
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-rose-600 dark:text-rose-400"
+                }`}
+              >
+                Diff {flow.mismatchPercent.toFixed(1)}% {!isLeak ? "✓" : "▲"}
+              </span>
+              <span className="text-muted-foreground block text-[11px]">
+                Mass-balance
+              </span>
+            </Link>
+
+            <div className="border-border/80 bg-muted/40 space-y-1 rounded-xl border p-3">
+              <span className="text-muted-foreground block text-[10px] font-bold uppercase">
+                5. Quality Gate
+              </span>
+              <span
+                className={`block text-xs font-bold ${
+                  isGatePass
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-rose-600 dark:text-rose-400"
+                }`}
+              >
+                {safety.qualityGate}
+              </span>
+              <span className="text-muted-foreground block text-[11px]">
+                Rule evaluation
+              </span>
+            </div>
+
+            <div
+              className={`space-y-1 rounded-xl border p-3 ${
+                isReleaseAllowed
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+                  : "border-rose-500/30 bg-rose-500/10 font-bold text-rose-800 dark:text-rose-300"
+              }`}
+            >
+              <span className="block text-[10px] font-bold uppercase opacity-80">
+                6. Distribution
+              </span>
+              <span className="block text-xs font-bold">
+                {safety.waterRelease}
+              </span>
+              <span className="block text-[11px] opacity-80">Supply valve</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 4. Assessment Bulletins */}
+      <Card className="border-border/80 shadow-2xs">
+        <CardHeader className="p-4 pb-2">
+          <div className="flex items-center gap-2">
+            <span
+              className={`size-2 rounded-full ${
+                isSafeSystem ? "bg-emerald-500" : "bg-rose-500"
+              }`}
+            />
+            <CardTitle className="text-foreground text-xs font-bold tracking-wider uppercase">
+              Operational Assessment Diagnostics
+            </CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 pt-1">
+          <ul className="text-muted-foreground space-y-1.5 text-xs">
+            {assessmentPoints.map((pt, idx) => (
+              <li key={idx} className="flex items-start gap-2">
+                <span
+                  className={`mt-0.5 font-bold ${isSafeSystem ? "text-emerald-600" : "text-rose-600"}`}
+                >
+                  {isSafeSystem ? "✓" : "▲"}
+                </span>
+                <span className="text-foreground">{pt}</span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+
+      {/* 5. Subsystem Hub Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Water Quality Card */}
+        <Card className="flex flex-col justify-between shadow-2xs transition-all hover:border-[var(--brand-secondary)]">
+          <CardHeader className="p-4 pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IconDroplet className="size-4 text-sky-600 dark:text-sky-400" />
+                <CardTitle className="text-foreground text-sm font-bold">
+                  Water Quality
+                </CardTitle>
+              </div>
+              <Badge
+                variant={isGatePass ? "default" : "destructive"}
+                className={
+                  isGatePass
+                    ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300"
+                    : ""
+                }
+              >
+                {isGatePass ? "Safe" : "Exceeded"}
+              </Badge>
+            </div>
+            <CardDescription className="text-xs">
+              9 physicochemical parameters monitored continuously against WHO
+              potability limits.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-muted-foreground text-xs font-medium">
+              <span>
+                pH{" "}
+                <strong className="telemetry-val text-foreground">
+                  {latestReading.ph.toFixed(2)}
+                </strong>
+              </span>{" "}
+              ·{" "}
+              <span>
+                Turbidity{" "}
+                <strong className="telemetry-val text-foreground">
+                  {latestReading.turbidity.toFixed(1)} NTU
+                </strong>
+              </span>
+            </div>
+          </CardContent>
+          <CardFooter className="border-border/60 border-t p-3 pt-2">
+            <Link
+              to="/water-quality"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "sm" }),
+                "hover:text-foreground w-full justify-between px-2 text-xs font-semibold text-[var(--brand-secondary)]",
+              )}
+            >
+              <span>Inspect Evidence</span>
+              <IconChevronRight className="size-3.5" />
+            </Link>
+          </CardFooter>
+        </Card>
+
+        {/* Purification Card */}
+        <Card className="flex flex-col justify-between shadow-2xs transition-all hover:border-[var(--brand-secondary)]">
+          <CardHeader className="p-4 pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IconFilter className="size-4 text-emerald-600 dark:text-emerald-400" />
+                <CardTitle className="text-foreground text-sm font-bold">
+                  Purification
+                </CardTitle>
+              </div>
+              <Badge
+                variant={
+                  purification.mode === "NORMAL" ? "default" : "secondary"
+                }
+                className={
+                  purification.mode === "NORMAL"
+                    ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300"
+                    : ""
+                }
               >
                 {purification.mode}
+              </Badge>
+            </div>
+            <CardDescription className="text-xs">
+              4 sequential physical, chemical, and UV-C stages with active media
+              lifecycle monitoring.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-muted-foreground text-xs font-medium">
+              <span>
+                Carbon Filter{" "}
+                <strong className="telemetry-val text-foreground">
+                  {purification.filters.carbon.lifePercent}%
+                </strong>
+              </span>{" "}
+              ·{" "}
+              <span>
+                Pump{" "}
+                <strong className="text-foreground">{purification.pump}</strong>
               </span>
             </div>
-            <p className="font-sans text-xs leading-relaxed text-[var(--text-muted)]">
-              4 sequential treatment stages with active media lifecycle
-              monitoring.
-            </p>
-            <div className="mt-2 font-mono text-xs text-[var(--text-secondary)]">
-              <span>Carbon Bed {purification.filters.carbon.lifePercent}%</span>{" "}
-              · <span>Pump {purification.pump}</span>
-            </div>
-          </div>
-
-          <Link
-            to="/purification"
-            className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-2 font-mono text-xs font-bold text-[var(--brand-secondary)] hover:underline"
-          >
-            <span>Inspect Stages</span>
-            <span>&rarr;</span>
-          </Link>
-        </div>
-
-        {/* Hydraulic Subsystem */}
-        <div className="ops-card flex flex-col justify-between space-y-3 p-4">
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <span className="font-mono text-xs font-bold text-[var(--text-primary)] uppercase">
-                Hydraulics
-              </span>
-              <span
-                className={`py-0.2 rounded px-1.5 font-mono text-[9px] font-bold ${
-                  !isLeak
-                    ? "bg-[var(--state-safe-bg)] text-[var(--state-safe-text)]"
-                    : "bg-[var(--state-danger-bg)] font-black text-[var(--state-danger-text)]"
-                }`}
-              >
-                {flow.leakStatus}
-              </span>
-            </div>
-            <p className="font-sans text-xs leading-relaxed text-[var(--text-muted)]">
-              Inlet vs outlet mass-balance differential and automated shutoff
-              valve.
-            </p>
-            <div className="mt-2 font-mono text-xs text-[var(--text-secondary)]">
-              <span>Flow {flow.inletFlowRate.toFixed(1)} L/min</span> ·{" "}
-              <span>Diff {flow.mismatchPercent.toFixed(1)}%</span>
-            </div>
-          </div>
-
-          <Link
-            to="/flow"
-            className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-2 font-mono text-xs font-bold text-[var(--brand-secondary)] hover:underline"
-          >
-            <span>Inspect Hydraulics</span>
-            <span>&rarr;</span>
-          </Link>
-        </div>
-
-        {/* Hardware Fleet Subsystem */}
-        <div className="ops-card flex flex-col justify-between space-y-3 p-4">
-          <div>
-            <div className="mb-1 flex items-center justify-between">
-              <span className="font-mono text-xs font-bold text-[var(--text-primary)] uppercase">
-                Hardware Nodes
-              </span>
-              <span className="py-0.2 rounded bg-[var(--state-safe-bg)] px-1.5 font-mono text-[9px] font-bold text-[var(--state-safe-text)]">
-                {devices.filter((d) => d.status === "ONLINE").length}/
-                {devices.length} ONLINE
-              </span>
-            </div>
-            <p className="font-sans text-xs leading-relaxed text-[var(--text-muted)]">
-              Edge microcontroller telemetry fleet, probe health, and
-              calibration offsets.
-            </p>
-            <div className="mt-2 font-mono text-xs text-[var(--text-secondary)]">
-              <span>Primary Node Synced</span>
-            </div>
-          </div>
-
-          <Link
-            to="/devices"
-            className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-2 font-mono text-xs font-bold text-[var(--brand-secondary)] hover:underline"
-          >
-            <span>Inspect Nodes</span>
-            <span>&rarr;</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* 6. DETAILED SENSOR TELEMETRY (Structured registry with progressive disclosure) */}
-      <div className="ops-card space-y-3 p-4">
-        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2.5">
-          <div>
-            <h3 className="font-mono text-xs font-bold tracking-wider text-[var(--text-primary)] uppercase">
-              Detailed Sensor Readings & Physicochemical Channels (9 Probes)
-            </h3>
-            <p className="font-mono text-[11px] text-[var(--text-muted)]">
-              Live calibrated readings ingested from edge microcontroller node
-            </p>
-          </div>
-
-          <button
-            onClick={() => setIsTelemetryExpanded(!isTelemetryExpanded)}
-            className="font-mono text-xs font-semibold text-[var(--brand-secondary)] hover:underline"
-          >
-            {isTelemetryExpanded ? "[Collapse Readings]" : "[Expand Readings]"}
-          </button>
-        </div>
-
-        {isTelemetryExpanded && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs">
-              <thead className="border-b border-[var(--border-subtle)] bg-[var(--bg-subtle)] text-[10px] text-[var(--text-dim)] uppercase">
-                <tr>
-                  <th className="px-3 py-2 font-bold">Parameter Channel</th>
-                  <th className="px-3 py-2 font-bold">Current Reading</th>
-                  <th className="px-3 py-2 font-bold">Safe Standard Limit</th>
-                  <th className="px-3 py-2 font-bold">Operating Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--border-subtle)]">
-                {/* pH */}
-                <tr className="hover:bg-[var(--bg-subtle)]">
-                  <td className="px-3 py-2 font-bold text-[var(--text-primary)]">
-                    pH Acidity
-                  </td>
-                  <td className="telemetry-val px-3 py-2 font-bold">
-                    {latestReading.ph.toFixed(2)}
-                  </td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">
-                    6.50 – 8.50
-                  </td>
-                  <td className="px-3 py-2">
-                    <span
-                      className={`py-0.2 rounded px-1.5 text-[10px] font-bold ${
-                        latestReading.ph >= 6.5 && latestReading.ph <= 8.5
-                          ? "bg-[var(--state-safe-bg)] text-[var(--state-safe-text)]"
-                          : "bg-[var(--state-danger-bg)] font-black text-[var(--state-danger-text)]"
-                      }`}
-                    >
-                      {latestReading.ph >= 6.5 && latestReading.ph <= 8.5
-                        ? "NORMAL"
-                        : "OUT_OF_RANGE"}
-                    </span>
-                  </td>
-                </tr>
-
-                {/* Turbidity */}
-                <tr className="hover:bg-[var(--bg-subtle)]">
-                  <td className="px-3 py-2 font-bold text-[var(--text-primary)]">
-                    Turbidity
-                  </td>
-                  <td className="telemetry-val px-3 py-2 font-bold">
-                    {latestReading.turbidity.toFixed(1)} NTU
-                  </td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">
-                    Max 5.0 NTU
-                  </td>
-                  <td className="px-3 py-2">
-                    <span
-                      className={`py-0.2 rounded px-1.5 text-[10px] font-bold ${
-                        latestReading.turbidity <= 5.0
-                          ? "bg-[var(--state-safe-bg)] text-[var(--state-safe-text)]"
-                          : "bg-[var(--state-danger-bg)] font-black text-[var(--state-danger-text)]"
-                      }`}
-                    >
-                      {latestReading.turbidity <= 5.0 ? "NORMAL" : "EXCEEDED"}
-                    </span>
-                  </td>
-                </tr>
-
-                {/* Heavy Metals */}
-                <tr className="hover:bg-[var(--bg-subtle)]">
-                  <td className="px-3 py-2 font-bold text-[var(--text-primary)]">
-                    Heavy Metals
-                  </td>
-                  <td className="telemetry-val px-3 py-2 font-bold">
-                    {latestReading.heavyMetals.toFixed(2)} ppm
-                  </td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">
-                    Max 0.10 ppm
-                  </td>
-                  <td className="px-3 py-2">
-                    <span
-                      className={`py-0.2 rounded px-1.5 text-[10px] font-bold ${
-                        latestReading.heavyMetals <= 0.1
-                          ? "bg-[var(--state-safe-bg)] text-[var(--state-safe-text)]"
-                          : "bg-[var(--state-danger-bg)] font-black text-[var(--state-danger-text)]"
-                      }`}
-                    >
-                      {latestReading.heavyMetals <= 0.1 ? "NORMAL" : "CRITICAL"}
-                    </span>
-                  </td>
-                </tr>
-
-                {/* TDS */}
-                <tr className="hover:bg-[var(--bg-subtle)]">
-                  <td className="px-3 py-2 font-bold text-[var(--text-primary)]">
-                    Total Dissolved Solids (TDS)
-                  </td>
-                  <td className="telemetry-val px-3 py-2 font-bold">
-                    {latestReading.tds.toFixed(0)} ppm
-                  </td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">
-                    Max 500 ppm
-                  </td>
-                  <td className="px-3 py-2">
-                    <span
-                      className={`py-0.2 rounded px-1.5 text-[10px] font-bold ${
-                        latestReading.tds <= 500
-                          ? "bg-[var(--state-safe-bg)] text-[var(--state-safe-text)]"
-                          : "bg-[var(--state-danger-bg)] font-black text-[var(--state-danger-text)]"
-                      }`}
-                    >
-                      {latestReading.tds <= 500 ? "NORMAL" : "EXCEEDED"}
-                    </span>
-                  </td>
-                </tr>
-
-                {/* Dissolved Oxygen */}
-                <tr className="hover:bg-[var(--bg-subtle)]">
-                  <td className="px-3 py-2 font-bold text-[var(--text-primary)]">
-                    Dissolved Oxygen
-                  </td>
-                  <td className="telemetry-val px-3 py-2 font-bold">
-                    {latestReading.dissolvedOxygen.toFixed(1)} mg/L
-                  </td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">
-                    &gt; 6.5 mg/L
-                  </td>
-                  <td className="px-3 py-2">
-                    <span className="py-0.2 rounded bg-[var(--state-safe-bg)] px-1.5 text-[10px] font-bold text-[var(--state-safe-text)]">
-                      NORMAL
-                    </span>
-                  </td>
-                </tr>
-
-                {/* Electrical Conductivity */}
-                <tr className="hover:bg-[var(--bg-subtle)]">
-                  <td className="px-3 py-2 font-bold text-[var(--text-primary)]">
-                    Electrical Conductivity
-                  </td>
-                  <td className="telemetry-val px-3 py-2 font-bold">
-                    {latestReading.electricalConductivity.toFixed(0)} µS/cm
-                  </td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">
-                    Observational
-                  </td>
-                  <td className="px-3 py-2">
-                    <span className="py-0.2 rounded bg-[var(--state-safe-bg)] px-1.5 text-[10px] font-bold text-[var(--state-safe-text)]">
-                      NORMAL
-                    </span>
-                  </td>
-                </tr>
-
-                {/* Hardness */}
-                <tr className="hover:bg-[var(--bg-subtle)]">
-                  <td className="px-3 py-2 font-bold text-[var(--text-primary)]">
-                    Total Hardness
-                  </td>
-                  <td className="telemetry-val px-3 py-2 font-bold">
-                    {latestReading.hardness.toFixed(0)} mg/L
-                  </td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">
-                    Max 300 mg/L
-                  </td>
-                  <td className="px-3 py-2">
-                    <span className="py-0.2 rounded bg-[var(--state-safe-bg)] px-1.5 text-[10px] font-bold text-[var(--state-safe-text)]">
-                      NORMAL
-                    </span>
-                  </td>
-                </tr>
-
-                {/* Temperature */}
-                <tr className="hover:bg-[var(--bg-subtle)]">
-                  <td className="px-3 py-2 font-bold text-[var(--text-primary)]">
-                    Water Temperature
-                  </td>
-                  <td className="telemetry-val px-3 py-2 font-bold">
-                    {latestReading.temperature.toFixed(1)} °C
-                  </td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">
-                    15.0 – 35.0 °C
-                  </td>
-                  <td className="px-3 py-2">
-                    <span className="py-0.2 rounded bg-[var(--state-safe-bg)] px-1.5 text-[10px] font-bold text-[var(--state-safe-text)]">
-                      NORMAL
-                    </span>
-                  </td>
-                </tr>
-
-                {/* Flow Rate */}
-                <tr className="hover:bg-[var(--bg-subtle)]">
-                  <td className="px-3 py-2 font-bold text-[var(--text-primary)]">
-                    Intake Discharge Flow
-                  </td>
-                  <td className="telemetry-val px-3 py-2 font-bold">
-                    {latestReading.flowRate.toFixed(1)} L/min
-                  </td>
-                  <td className="px-3 py-2 text-[var(--text-muted)]">
-                    Rated 45.0 L/min
-                  </td>
-                  <td className="px-3 py-2">
-                    <span className="py-0.2 rounded bg-[var(--state-safe-bg)] px-1.5 text-[10px] font-bold text-[var(--state-safe-text)]">
-                      NORMAL
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* 7. ALARMS & INCIDENT STREAM */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Active Alarms */}
-        <div className="ops-card space-y-3 p-4">
-          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-            <span className="font-mono text-xs font-bold tracking-wider text-[var(--text-primary)] uppercase">
-              Active Alarms Queue ({activeAlerts.length})
-            </span>
+          </CardContent>
+          <CardFooter className="border-border/60 border-t p-3 pt-2">
             <Link
-              to="/alerts"
-              className="font-mono text-xs font-semibold text-[var(--brand-secondary)] hover:underline"
+              to="/purification"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "sm" }),
+                "hover:text-foreground w-full justify-between px-2 text-xs font-semibold text-[var(--brand-secondary)]",
+              )}
             >
-              All Alerts &rarr;
+              <span>Inspect Stages</span>
+              <IconChevronRight className="size-3.5" />
             </Link>
-          </div>
+          </CardFooter>
+        </Card>
 
-          {activeAlerts.length === 0 ? (
-            <div className="py-6 text-center font-mono text-xs text-[var(--text-muted)]">
-              ● All operating parameters within safe tolerance limits.
+        {/* Hydraulics Card */}
+        <Card className="flex flex-col justify-between shadow-2xs transition-all hover:border-[var(--brand-secondary)]">
+          <CardHeader className="p-4 pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IconGauge className="size-4 text-amber-600 dark:text-amber-400" />
+                <CardTitle className="text-foreground text-sm font-bold">
+                  Hydraulics
+                </CardTitle>
+              </div>
+              <Badge
+                variant={!isLeak ? "default" : "destructive"}
+                className={
+                  !isLeak
+                    ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300"
+                    : ""
+                }
+              >
+                {!isLeak ? "Normal" : "Leak"}
+              </Badge>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {activeAlerts.map((alert) => (
-                <div
-                  key={alert.id}
-                  className={`flex items-start justify-between gap-3 rounded border p-2.5 font-mono text-xs ${
-                    alert.severity === "CRITICAL"
-                      ? "border-[var(--state-danger-border)] bg-[var(--state-danger-bg)] text-[var(--state-danger-text)]"
-                      : "border-[var(--state-warn-border)] bg-[var(--state-warn-bg)] text-[var(--state-warn-text)]"
-                  }`}
-                >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold uppercase">
-                        [{alert.severity}] {alert.type}
-                      </span>
-                    </div>
-                    <p className="m-0 font-sans text-xs text-[var(--text-primary)]">
-                      {alert.message}
-                    </p>
-                    <span className="text-[10px] opacity-75">
-                      {new Date(alert.created_at).toLocaleString()}
+            <CardDescription className="text-xs">
+              Dual-sensor mass-balance monitoring with automated pipeline
+              isolation valve.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-muted-foreground text-xs font-medium">
+              <span>
+                Flow{" "}
+                <strong className="telemetry-val text-foreground">
+                  {flow.inletFlowRate.toFixed(1)} L/min
+                </strong>
+              </span>{" "}
+              ·{" "}
+              <span>
+                Mismatch{" "}
+                <strong className="telemetry-val text-foreground">
+                  {flow.mismatchPercent.toFixed(1)}%
+                </strong>
+              </span>
+            </div>
+          </CardContent>
+          <CardFooter className="border-border/60 border-t p-3 pt-2">
+            <Link
+              to="/flow"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "sm" }),
+                "hover:text-foreground w-full justify-between px-2 text-xs font-semibold text-[var(--brand-secondary)]",
+              )}
+            >
+              <span>Inspect Hydraulics</span>
+              <IconChevronRight className="size-3.5" />
+            </Link>
+          </CardFooter>
+        </Card>
+
+        {/* Hardware Nodes Card */}
+        <Card className="flex flex-col justify-between shadow-2xs transition-all hover:border-[var(--brand-secondary)]">
+          <CardHeader className="p-4 pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IconCpu className="size-4 text-purple-600 dark:text-purple-400" />
+                <CardTitle className="text-foreground text-sm font-bold">
+                  Edge Fleet
+                </CardTitle>
+              </div>
+              <Badge variant="outline" className="text-xs font-semibold">
+                {devices.filter((d) => d.status === "ONLINE").length}/
+                {devices.length} Online
+              </Badge>
+            </div>
+            <CardDescription className="text-xs">
+              Hardware microcontroller telemetry nodes, probe calibrations, and
+              health diagnostics.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-muted-foreground text-xs font-medium">
+              <span>Station Master Node Synced</span>
+            </div>
+          </CardContent>
+          <CardFooter className="border-border/60 border-t p-3 pt-2">
+            <Link
+              to="/devices"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "sm" }),
+                "hover:text-foreground w-full justify-between px-2 text-xs font-semibold text-[var(--brand-secondary)]",
+              )}
+            >
+              <span>Inspect Nodes</span>
+              <IconChevronRight className="size-3.5" />
+            </Link>
+          </CardFooter>
+        </Card>
+      </div>
+
+      {/* 6. 9-Parameter Real-Time Telemetry Grid */}
+      <Collapsible
+        open={isTelemetryExpanded}
+        onOpenChange={setIsTelemetryExpanded}
+        className="border-border/80 bg-card rounded-2xl border shadow-2xs"
+      >
+        <div className="flex items-center justify-between p-4 pb-3">
+          <div>
+            <h2 className="text-foreground text-sm font-bold tracking-tight">
+              Detailed Sensor Channels (9 Ingestion Probes)
+            </h2>
+            <p className="text-muted-foreground text-xs">
+              Calibrated physicochemical readings from edge microcontroller node
+            </p>
+          </div>
+          <CollapsibleTrigger
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "sm" }),
+              "gap-1 text-xs font-semibold",
+            )}
+          >
+            <span>{isTelemetryExpanded ? "Collapse" : "Expand"}</span>
+            {isTelemetryExpanded ? (
+              <IconChevronUp className="size-4" />
+            ) : (
+              <IconChevronDown className="size-4" />
+            )}
+          </CollapsibleTrigger>
+        </div>
+
+        <CollapsibleContent>
+          <Separator />
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[260px]">Parameter Channel</TableHead>
+                <TableHead className="w-[180px]">Current Telemetry</TableHead>
+                <TableHead>WHO Potability Range</TableHead>
+                <TableHead className="w-[120px] text-right">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {/* pH */}
+              <TableRow className="hover:bg-muted/30">
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="ring-background size-2 rounded-full bg-emerald-500 ring-2" />
+                    <span className="text-foreground font-bold">
+                      pH Acidity
                     </span>
                   </div>
-
-                  {alert.status === "UNREAD" && (
-                    <button
-                      disabled={
-                        role === "VIEWER" || acknowledgingId === alert.id
-                      }
-                      onClick={() => handleAcknowledgeAlert(alert.id)}
-                      className="shrink-0 rounded bg-[var(--brand-primary)] px-2.5 py-1 text-[10px] font-bold text-white transition hover:bg-[var(--brand-secondary)] disabled:opacity-50"
-                    >
-                      {acknowledgingId === alert.id ? "Saving..." : "ACK"}
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Operational Audit Log */}
-        <div className="ops-card space-y-3 p-4">
-          <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-            <span className="font-mono text-xs font-bold tracking-wider text-[var(--text-primary)] uppercase">
-              Operational Event Audit Stream
-            </span>
-            <Link
-              to="/alerts"
-              className="font-mono text-xs font-semibold text-[var(--brand-secondary)] hover:underline"
-            >
-              Full Log &rarr;
-            </Link>
-          </div>
-
-          {recentEvents.length === 0 ? (
-            <div className="py-6 text-center font-mono text-xs text-[var(--text-muted)]">
-              No recent events logged.
-            </div>
-          ) : (
-            <div className="divide-y divide-[var(--border-subtle)] font-mono text-xs">
-              {recentEvents.slice(0, 5).map((evt) => (
-                <div
-                  key={evt.id}
-                  className="flex items-center justify-between py-2"
-                >
-                  <div className="flex items-center gap-2 truncate pr-2">
+                </TableCell>
+                <TableCell>
+                  <span className="telemetry-val text-foreground text-sm font-black">
+                    {latestReading.ph.toFixed(2)}
+                  </span>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-xs">
+                  6.50 – 8.50 pH
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge
+                    variant={
+                      latestReading.ph >= 6.5 && latestReading.ph <= 8.5
+                        ? "outline"
+                        : "destructive"
+                    }
+                    className={
+                      latestReading.ph >= 6.5 && latestReading.ph <= 8.5
+                        ? "border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                        : "font-semibold"
+                    }
+                  >
                     <span
-                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                        evt.severity === "CRITICAL"
-                          ? "bg-[var(--state-danger-text)]"
-                          : evt.severity === "WARNING"
-                            ? "bg-[var(--state-warn-text)]"
-                            : "bg-[var(--state-safe-text)]"
+                      className={`mr-1.5 size-1.5 rounded-full ${
+                        latestReading.ph >= 6.5 && latestReading.ph <= 8.5
+                          ? "animate-pulse bg-emerald-500"
+                          : "bg-red-500"
                       }`}
                     />
-                    <span className="font-bold text-[var(--text-primary)]">
-                      {evt.type}:
+                    {latestReading.ph >= 6.5 && latestReading.ph <= 8.5
+                      ? "Normal"
+                      : "Out of Range"}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+
+              {/* Turbidity */}
+              <TableRow className="hover:bg-muted/30">
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="ring-background size-2 rounded-full bg-cyan-500 ring-2" />
+                    <span className="text-foreground font-bold">Turbidity</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-baseline gap-1">
+                    <span className="telemetry-val text-foreground text-sm font-black">
+                      {latestReading.turbidity.toFixed(1)}
                     </span>
-                    <span className="truncate font-sans text-[var(--text-muted)]">
-                      {evt.message}
+                    <span className="text-muted-foreground text-xs font-medium">
+                      NTU
                     </span>
                   </div>
-                  <span className="shrink-0 text-[10px] text-[var(--text-dim)]">
-                    {new Date(evt.created_at).toLocaleTimeString()}
-                  </span>
-                </div>
-              ))}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-xs">
+                  Max 5.0 NTU
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge
+                    variant={
+                      latestReading.turbidity <= 5.0 ? "outline" : "destructive"
+                    }
+                    className={
+                      latestReading.turbidity <= 5.0
+                        ? "border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                        : "font-semibold"
+                    }
+                  >
+                    <span
+                      className={`mr-1.5 size-1.5 rounded-full ${
+                        latestReading.turbidity <= 5.0
+                          ? "animate-pulse bg-emerald-500"
+                          : "bg-red-500"
+                      }`}
+                    />
+                    {latestReading.turbidity <= 5.0 ? "Normal" : "Exceeded"}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+
+              {/* Heavy Metals */}
+              <TableRow className="hover:bg-muted/30">
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="ring-background size-2 rounded-full bg-rose-500 ring-2" />
+                    <span className="text-foreground font-bold">
+                      Heavy Metals (Lead/Cadmium)
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-baseline gap-1">
+                    <span className="telemetry-val text-foreground text-sm font-black">
+                      {latestReading.heavyMetals.toFixed(2)}
+                    </span>
+                    <span className="text-muted-foreground text-xs font-medium">
+                      ppm
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-xs">
+                  Max 0.10 ppm
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge
+                    variant={
+                      latestReading.heavyMetals <= 0.1
+                        ? "outline"
+                        : "destructive"
+                    }
+                    className={
+                      latestReading.heavyMetals <= 0.1
+                        ? "border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                        : "font-semibold"
+                    }
+                  >
+                    <span
+                      className={`mr-1.5 size-1.5 rounded-full ${
+                        latestReading.heavyMetals <= 0.1
+                          ? "animate-pulse bg-emerald-500"
+                          : "bg-red-500"
+                      }`}
+                    />
+                    {latestReading.heavyMetals <= 0.1 ? "Normal" : "Hazard"}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+
+              {/* TDS */}
+              <TableRow className="hover:bg-muted/30">
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="ring-background size-2 rounded-full bg-amber-500 ring-2" />
+                    <span className="text-foreground font-bold">
+                      Total Dissolved Solids (TDS)
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-baseline gap-1">
+                    <span className="telemetry-val text-foreground text-sm font-black">
+                      {latestReading.tds.toFixed(0)}
+                    </span>
+                    <span className="text-muted-foreground text-xs font-medium">
+                      ppm
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-xs">
+                  Max 500 ppm
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge
+                    variant={
+                      latestReading.tds <= 500 ? "outline" : "destructive"
+                    }
+                    className={
+                      latestReading.tds <= 500
+                        ? "border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                        : "font-semibold"
+                    }
+                  >
+                    <span
+                      className={`mr-1.5 size-1.5 rounded-full ${
+                        latestReading.tds <= 500
+                          ? "animate-pulse bg-emerald-500"
+                          : "bg-red-500"
+                      }`}
+                    />
+                    {latestReading.tds <= 500 ? "Normal" : "Exceeded"}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+
+              {/* Dissolved Oxygen */}
+              <TableRow className="hover:bg-muted/30">
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="ring-background size-2 rounded-full bg-violet-500 ring-2" />
+                    <span className="text-foreground font-bold">
+                      Dissolved Oxygen
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-baseline gap-1">
+                    <span className="telemetry-val text-foreground text-sm font-black">
+                      {latestReading.dissolvedOxygen.toFixed(1)}
+                    </span>
+                    <span className="text-muted-foreground text-xs font-medium">
+                      mg/L
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-xs">
+                  &gt; 6.5 mg/L
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                  >
+                    <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                    Normal
+                  </Badge>
+                </TableCell>
+              </TableRow>
+
+              {/* Electrical Conductivity */}
+              <TableRow className="hover:bg-muted/30">
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="ring-background size-2 rounded-full bg-blue-500 ring-2" />
+                    <span className="text-foreground font-bold">
+                      Electrical Conductivity
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-baseline gap-1">
+                    <span className="telemetry-val text-foreground text-sm font-black">
+                      {latestReading.electricalConductivity.toFixed(0)}
+                    </span>
+                    <span className="text-muted-foreground text-xs font-medium">
+                      µS/cm
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-xs">
+                  Observational
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                  >
+                    <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                    Normal
+                  </Badge>
+                </TableCell>
+              </TableRow>
+
+              {/* Total Hardness */}
+              <TableRow className="hover:bg-muted/30">
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="ring-background size-2 rounded-full bg-purple-500 ring-2" />
+                    <span className="text-foreground font-bold">
+                      Total Hardness
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-baseline gap-1">
+                    <span className="telemetry-val text-foreground text-sm font-black">
+                      {latestReading.hardness.toFixed(0)}
+                    </span>
+                    <span className="text-muted-foreground text-xs font-medium">
+                      mg/L
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-xs">
+                  Max 300 mg/L
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                  >
+                    <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                    Normal
+                  </Badge>
+                </TableCell>
+              </TableRow>
+
+              {/* Water Temperature */}
+              <TableRow className="hover:bg-muted/30">
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="ring-background size-2 rounded-full bg-orange-500 ring-2" />
+                    <span className="text-foreground font-bold">
+                      Water Temperature
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-baseline gap-1">
+                    <span className="telemetry-val text-foreground text-sm font-black">
+                      {latestReading.temperature.toFixed(1)}
+                    </span>
+                    <span className="text-muted-foreground text-xs font-medium">
+                      °C
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-xs">
+                  15.0 – 35.0 °C
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                  >
+                    <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                    Normal
+                  </Badge>
+                </TableCell>
+              </TableRow>
+
+              {/* Discharge Flow */}
+              <TableRow className="hover:bg-muted/30">
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="ring-background size-2 rounded-full bg-teal-500 ring-2" />
+                    <span className="text-foreground font-bold">
+                      Intake Discharge Flow
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-baseline gap-1">
+                    <span className="telemetry-val text-foreground text-sm font-black">
+                      {latestReading.flowRate.toFixed(1)}
+                    </span>
+                    <span className="text-muted-foreground text-xs font-medium">
+                      L/min
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-xs">
+                  Rated 45.0 L/min
+                </TableCell>
+                <TableCell className="text-right">
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-500/30 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-400"
+                  >
+                    <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                    Normal
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* 7. Alarms Queue & Audit Log Stream */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Active Alarms */}
+        <Card className="shadow-2xs">
+          <CardHeader className="p-4 pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IconAlertTriangle className="size-4 text-rose-600" />
+                <CardTitle className="text-foreground text-sm font-bold">
+                  Active Alarms Queue ({activeAlerts.length})
+                </CardTitle>
+              </div>
+              <Link
+                to="/alerts"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "xs" }),
+                  "h-6 text-xs font-semibold text-[var(--brand-secondary)]",
+                )}
+              >
+                All Alerts &rarr;
+              </Link>
             </div>
-          )}
-        </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-1">
+            {activeAlerts.length === 0 ? (
+              <div className="text-muted-foreground py-8 text-center text-xs">
+                <IconCheck className="mx-auto mb-1.5 size-5 text-emerald-600" />
+                <span>
+                  All parameters operating within safe tolerance boundaries.
+                </span>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {activeAlerts.map((alert) => (
+                  <Alert
+                    key={alert.id}
+                    variant={
+                      alert.severity === "CRITICAL" ? "destructive" : "default"
+                    }
+                    className="p-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={
+                              alert.severity === "CRITICAL"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                            className="text-[10px] font-bold"
+                          >
+                            {alert.severity}
+                          </Badge>
+                          <span className="text-foreground text-xs font-bold">
+                            {alert.type}
+                          </span>
+                        </div>
+                        <AlertDescription className="text-foreground text-xs">
+                          {alert.message}
+                        </AlertDescription>
+                        <span className="text-muted-foreground text-[10px]">
+                          {new Date(alert.created_at).toLocaleString()}
+                        </span>
+                      </div>
+
+                      {alert.status === "UNREAD" && (
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          disabled={
+                            role === "VIEWER" || acknowledgingId === alert.id
+                          }
+                          onClick={() => handleAcknowledgeAlert(alert.id)}
+                          className="shrink-0 text-[11px] font-bold"
+                        >
+                          {acknowledgingId === alert.id
+                            ? "Saving..."
+                            : "Acknowledge"}
+                        </Button>
+                      )}
+                    </div>
+                  </Alert>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Audit Log Stream */}
+        <Card className="shadow-2xs">
+          <CardHeader className="p-4 pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IconActivity className="size-4 text-[var(--brand-secondary)]" />
+                <CardTitle className="text-foreground text-sm font-bold">
+                  Operational Event Audit Log
+                </CardTitle>
+              </div>
+              <Link
+                to="/alerts"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "xs" }),
+                  "h-6 text-xs font-semibold text-[var(--brand-secondary)]",
+                )}
+              >
+                Full History &rarr;
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-1">
+            {recentEvents.length === 0 ? (
+              <div className="text-muted-foreground py-8 text-center text-xs">
+                No recent system events logged.
+              </div>
+            ) : (
+              <div className="divide-border/60 divide-y">
+                {recentEvents.slice(0, 5).map((evt) => (
+                  <div
+                    key={evt.id}
+                    className="flex items-center justify-between py-2 text-xs"
+                  >
+                    <div className="flex items-center gap-2 truncate pr-2">
+                      <span
+                        className={`size-1.5 shrink-0 rounded-full ${
+                          evt.severity === "CRITICAL"
+                            ? "bg-rose-500"
+                            : evt.severity === "WARNING"
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                        }`}
+                      />
+                      <span className="text-foreground font-bold">
+                        {evt.type}:
+                      </span>
+                      <span className="text-muted-foreground truncate">
+                        {evt.message}
+                      </span>
+                    </div>
+                    <span className="telemetry-val text-muted-foreground shrink-0 text-[11px]">
+                      {new Date(evt.created_at).toLocaleTimeString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </main>
   );

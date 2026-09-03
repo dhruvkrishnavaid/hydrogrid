@@ -1,6 +1,6 @@
 **PS 26040 | Frontend + Agent Integration Context | FROZEN**
 
-This page is the canonical context for **frontend developers, frontend coding agents, and LLMs** working on JalRakshak.
+This page is the canonical context for **frontend developers, frontend coding agents, and LLMs** working on HydroGrid.
 
 The frontend is a consumer of the frozen backend contract. Do not invent backend behavior, duplicate backend decision logic, or create alternative API shapes.
 
@@ -8,7 +8,7 @@ The frontend is a consumer of the frozen backend contract. Do not invent backend
 
 # 1. Product Context
 
-JalRakshak is an offline-first water monitoring and purification system for rural and mining-affected areas.
+HydroGrid is an offline-first water monitoring and purification system for rural and mining-affected areas.
 
 The MVP is a **software + simulator demonstration**. Physical hardware is not connected yet.
 
@@ -91,23 +91,23 @@ These are the frozen MVP API groups available to the frontend:
 
 ## Route Ownership
 
-| Route | Frontend Purpose |
-| --- | --- |
-| `/dashboard` | Aggregated dashboard state |
-| `/sites` | Site selection and site information |
-| `/devices` | Device state and health |
-| `/water-quality` | Current and historical water readings |
-| `/water-safety` | Safety Score, confidence, status, reasons |
-| `/quality-gate` | Water release / block decision |
-| `/purification` | Treatment stages and pump/filter state |
-| `/calibration` | Calibration state and requirements |
-| `/maintenance` | Filter and maintenance information |
-| `/flow` | Flow measurements and mismatch |
-| `/leaks` | Leak state and isolation state |
-| `/events` | Historical/system events |
-| `/alerts` | Active and historical alerts |
-| `/events/stream` | Realtime SSE updates |
-| `/dev/simulator` | Hackathon demo scenario controls |
+| Route            | Frontend Purpose                          |
+| ---------------- | ----------------------------------------- |
+| `/dashboard`     | Aggregated dashboard state                |
+| `/sites`         | Site selection and site information       |
+| `/devices`       | Device state and health                   |
+| `/water-quality` | Current and historical water readings     |
+| `/water-safety`  | Safety Score, confidence, status, reasons |
+| `/quality-gate`  | Water release / block decision            |
+| `/purification`  | Treatment stages and pump/filter state    |
+| `/calibration`   | Calibration state and requirements        |
+| `/maintenance`   | Filter and maintenance information        |
+| `/flow`          | Flow measurements and mismatch            |
+| `/leaks`         | Leak state and isolation state            |
+| `/events`        | Historical/system events                  |
+| `/alerts`        | Active and historical alerts              |
+| `/events/stream` | Realtime SSE updates                      |
+| `/dev/simulator` | Hackathon demo scenario controls          |
 
 Detailed request/response schemas belong to the separate **Frontend LLM Integration Contract**. If a schema is not defined there, do not invent one; ask the backend team.
 

@@ -1,6 +1,6 @@
 **PS 26040 | Backend MVP | FROZEN**
 
-This document is only for the backend team.  
+This document is only for the backend team.
 
 It defines **what we are building**, the **system workflow**, and the **demo behavior**.
 

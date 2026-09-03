@@ -1,6 +1,8 @@
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import type React from "react";
 
+import { TooltipProvider } from "@/components/ui/tooltip";
+
 import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { SimulatorDrawer } from "../components/SimulatorDrawer";
@@ -21,7 +23,8 @@ export const Route = createRootRoute({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "HydroGrid | Industrial Water Quality & Purification SCADA",
+        title:
+          "HydroGrid | Autonomous Water Purification & Quality Intelligence",
       },
     ],
     links: [
@@ -43,10 +46,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="flex min-h-screen flex-col bg-[var(--bg-app)] font-sans text-[var(--text-primary)] antialiased">
         <AuthProvider>
-          <Header />
-          <div className="flex-1">{children}</div>
-          <SimulatorDrawer />
-          <Footer />
+          <TooltipProvider>
+            <Header />
+            <div className="flex-1">{children}</div>
+            <SimulatorDrawer />
+            <Footer />
+          </TooltipProvider>
         </AuthProvider>
         <Scripts />
       </body>

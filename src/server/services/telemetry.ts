@@ -70,7 +70,12 @@ export async function recordTelemetry(
         }
 
         writeApi.writePoint(point);
-        await writeApi.flush();
+        await Promise.race([
+          writeApi.flush(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("InfluxDB flush timed out")), 1500),
+          ),
+        ]);
       }
     } catch (err) {
       console.warn("InfluxDB write failed (non-blocking fallback):", err);

@@ -15,7 +15,9 @@ const config = defineConfig({
   },
   plugins: [
     babel({ presets: [reactCompilerPreset()] }),
-    devtools(),
+    devtools({
+      injectSource: { enabled: false },
+    }),
     nitro({ rollupConfig: { external: [/^@sentry\//] } }),
     tailwindcss(),
     tanstackStart(),

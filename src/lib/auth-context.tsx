@@ -194,6 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       }
 
+      const existingToken = getStoredToken();
       if (existingToken) {
         if (mounted) setToken(existingToken);
         const loaded = await refreshSites(existingToken);

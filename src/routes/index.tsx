@@ -186,7 +186,7 @@ function DashboardPage() {
     } finally {
       setIsLoadingData(false);
     }
-  }, [activeSiteId]);
+  }, [activeSiteId, token]);
 
   useEffect(() => {
     if (activeSiteId) {
@@ -195,7 +195,7 @@ function DashboardPage() {
     } else if (!isAuthLoading && !isAuthenticating) {
       setIsLoadingData(false);
     }
-  }, [activeSiteId, fetchOverview, isAuthLoading, isAuthenticating]);
+  }, [activeSiteId, token, fetchOverview, isAuthLoading, isAuthenticating]);
 
   // Reactive SSE update listener with immediate optimistic state update + server reconciliation
   useSSE({

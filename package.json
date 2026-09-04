@@ -16,7 +16,10 @@
     "test": "bun test",
     "seed:influx": "bun scripts/seed-influx.ts",
     "db:generate": "prisma contract emit",
-    "db:push": "prisma db push",
+    "db:update": "prisma db update --yes",
+    "db:push": "prisma db update --yes",
+    "db:verify": "prisma db verify",
+    "db:sign": "prisma db sign",
     "db:seed": "bun scripts/seed-db.ts",
     "start": "bun .output/server/index.mjs"
   },

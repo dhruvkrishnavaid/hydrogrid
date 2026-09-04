@@ -3,7 +3,7 @@ services:
     name: hydrogrid
     runtime: node
     plan: free
-    buildCommand: bun install && bun run db:push && bun run db:generate && bun run build
+    buildCommand: bun install && bun run db:generate && bun run db:update && bun run build
     startCommand: bun run start
     healthCheckPath: /api/health
     envVars:

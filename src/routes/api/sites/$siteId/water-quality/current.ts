@@ -13,7 +13,7 @@ const DEFAULT_SAFE_READING = {
   tds: 210.0,
   electricalConductivity: 340.0,
   temperature: 24.0,
-  flowRate: 45.0,
+  flowRate: 33.0, // Typical demand; rated 45.0; leak >47.25 L/min
   hardness: 140.0,
 };
 

@@ -112,15 +112,22 @@ export function evaluateWaterSafety(
     totalPenalties += 15;
   }
 
-  // 6. Flow mismatch / Leak detection (CRITICAL if > max_flow_mismatch_percent)
-  const flowMismatch = options?.flowMismatchPercent ?? 0;
-  if (flowMismatch > activeConfig.max_flow_mismatch_percent) {
+  // 6. Flow Surge / Leak Detection: Flow rate > 47.25 L/min (5% above 45.0 rated capacity) assumed as a leak and isolated
+  const LEAK_TRIP_THRESHOLD = 45.0 * 1.05; // 47.25 L/min
+  const isFlowLeak =
+    reading.flowRate > LEAK_TRIP_THRESHOLD ||
+    (options?.flowMismatchPercent ?? 0) > 5.0;
+  if (isFlowLeak) {
+    const surgeAmount = reading.flowRate > 45.0 ? reading.flowRate - 45.0 : 0;
+    const mismatchVal =
+      options?.flowMismatchPercent ??
+      Number(((surgeAmount / 45.0) * 100).toFixed(1));
     violations.push({
       parameter: "flowMismatch",
-      value: flowMismatch,
-      threshold: `<=${activeConfig.max_flow_mismatch_percent}%`,
+      value: mismatchVal,
+      threshold: "<= 47.25 L/min (5% above Rated 45.0 L/min)",
       severity: "CRITICAL",
-      message: `Flow mismatch ${flowMismatch.toFixed(1)}% exceeds threshold of ${activeConfig.max_flow_mismatch_percent}% (potential leak)`,
+      message: `Flow rate ${reading.flowRate.toFixed(1)} L/min exceeds rated limit of 47.25 L/min (+${mismatchVal.toFixed(1)}% surge leak detected)`,
     });
     totalPenalties += 40;
   }

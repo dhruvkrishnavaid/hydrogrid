@@ -42,8 +42,8 @@ export interface SimulatorExecutionResult {
   scenario: SimulatorScenario;
   reading: WaterQualityReading;
   flow: {
-    inletFlowRate: number;
-    outletFlowRate: number;
+    flowRate: number;
+    nominalFlowRate: number;
     mismatchPercent: number;
     leakStatus: "NORMAL" | "LEAK_DETECTED" | "ISOLATED";
     valveStatus: "OPEN" | "CLOSED";
@@ -70,7 +70,7 @@ const BASELINE_SAFE_READING: WaterQualityReading = {
   tds: 210.0,
   electricalConductivity: 340.0,
   temperature: 24.0,
-  flowRate: 45.0,
+  flowRate: 33.0, // Typical operating demand — rated capacity is 45.0 L/min; leak trips at >47.25 L/min (+5%)
   hardness: 140.0,
 };
 
@@ -128,8 +128,6 @@ export async function executeSimulatorScenario(
 
   let reading: WaterQualityReading = { ...BASELINE_SAFE_READING };
   let flowMismatchPercent = 0;
-  let inletFlow = 45.0;
-  let outletFlow = 45.0;
   let sensorDegradedCount = 0;
   let calibrationRequired = false;
   let deviceStatus: "ONLINE" | "DEGRADED" | "OFFLINE" | "FAULT" = "ONLINE";
@@ -205,17 +203,15 @@ export async function executeSimulatorScenario(
       break;
 
     case "LEAK_DETECTED":
-      inletFlow = 45.0;
-      outletFlow = 31.5;
       flowMismatchPercent = 30.0;
-      reading = { ...BASELINE_SAFE_READING, flowRate: 31.5 };
+      reading = { ...BASELINE_SAFE_READING, flowRate: 58.5 };
       extraEvent = await createEvent({
         site_id: siteId,
         device_id: deviceId ?? null,
         type: "LEAK_DETECTED",
         severity: "CRITICAL",
         message:
-          "Pipeline flow differential mismatch 30.0% exceeded 15.0% threshold. Node Zero 12V solenoid valve isolated.",
+          "Node Zero flow rate surge to 58.5 L/min (+30.0% above 45.0 L/min baseline). Pipeline leak detected — automated 12V solenoid valve isolated. Trip threshold: >47.25 L/min (5% above rated capacity).",
       });
       extraAlert = await createAlert({
         site_id: siteId,
@@ -224,12 +220,12 @@ export async function executeSimulatorScenario(
         severity: "CRITICAL",
         status: "UNREAD",
         message:
-          "Pipeline leak detected. Flow mismatch 30.0%. Solenoid shutoff valve isolated.",
+          "Pipeline leak detected. Node Zero flow surged to 58.5 L/min (+30.0% above rated 45.0 L/min). Leak trip threshold: >47.25 L/min (5%). Solenoid shutoff valve closed.",
       });
       broadcastSiteEvent(siteId, "leak.detected", {
         siteId,
         differencePercent: 30.0,
-        thresholdPercent: 15.0,
+        thresholdPercent: 5.0,
         valveStatus: "CLOSED",
       });
       break;
@@ -446,6 +442,9 @@ export async function executeSimulatorScenario(
   const isBlocked = safety.waterRelease === "BLOCKED";
   const purification = getPurificationStatus(siteId, isBlocked);
 
+  const isLeak = reading.flowRate > 47.25 || flowMismatchPercent > 5.0; // 5% above rated 45.0 L/min
+  const isValveClosed = isBlocked || isLeak;
+
   // Broadcast realtime SSE events
   broadcastSiteEvent(siteId, "water-quality.updated", { siteId, reading });
   broadcastSiteEvent(siteId, "water-safety.updated", { siteId, safety });
@@ -456,10 +455,17 @@ export async function executeSimulatorScenario(
   });
   broadcastSiteEvent(siteId, "flow.updated", {
     siteId,
-    inletFlow,
-    outletFlow,
+    flow: {
+      flowRate: reading.flowRate,
+      nominalFlowRate: 45.0,
+      mismatchPercent: flowMismatchPercent,
+      leakStatus: isLeak ? "LEAK_DETECTED" : "NORMAL",
+      valveStatus: isValveClosed ? "CLOSED" : "OPEN",
+    },
+    flowRate: reading.flowRate,
+    nominalFlowRate: 45.0,
     mismatchPercent: flowMismatchPercent,
-    valveStatus: isBlocked ? "CLOSED" : "OPEN",
+    valveStatus: isValveClosed ? "CLOSED" : "OPEN",
   });
 
   const finalAlert = extraAlert ?? safetyAlert;
@@ -471,11 +477,11 @@ export async function executeSimulatorScenario(
     scenario: normalized,
     reading,
     flow: {
-      inletFlowRate: inletFlow,
-      outletFlowRate: outletFlow,
+      flowRate: reading.flowRate,
+      nominalFlowRate: 45.0,
       mismatchPercent: flowMismatchPercent,
-      leakStatus: flowMismatchPercent > 15.0 ? "LEAK_DETECTED" : "NORMAL",
-      valveStatus: isBlocked ? "CLOSED" : "OPEN",
+      leakStatus: isLeak ? "LEAK_DETECTED" : "NORMAL",
+      valveStatus: isValveClosed ? "CLOSED" : "OPEN",
     },
     safety,
     deviceState: {

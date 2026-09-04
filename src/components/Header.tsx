@@ -32,9 +32,15 @@ import { useSSE } from "../lib/use-sse";
 import ThemeToggle from "./ThemeToggle";
 
 export default function Header() {
-  const { role, activeSite, activeSiteId, useDemoPersona, isAuthenticating } =
-    useAuth();
-  const { connectionState } = useSSE({ siteId: activeSiteId });
+  const {
+    role,
+    activeSite,
+    activeSiteId,
+    token,
+    useDemoPersona,
+    isAuthenticating,
+  } = useAuth();
+  const { connectionState } = useSSE({ siteId: activeSiteId, token });
 
   return (
     <header className="border-border/80 bg-background/90 sticky top-0 z-50 border-b backdrop-blur-md">

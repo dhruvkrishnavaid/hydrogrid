@@ -71,6 +71,35 @@ export function WaterQualityAreaChart({
   className,
 }: WaterQualityAreaChartProps) {
   const [activeMetric, setActiveMetric] = React.useState<ActiveMetric>("all");
+  const [hoveredPoint, setHoveredPoint] = React.useState<{
+    time: string;
+    ph: number;
+    turbidity: number;
+    tds: number;
+    dissolvedOxygen: number;
+    heavyMetals: number;
+  } | null>(null);
+
+  const lastHoveredRef = React.useRef<string | null>(null);
+
+  const handleHoverSync = React.useCallback(
+    (
+      pt: {
+        time: string;
+        ph: number;
+        turbidity: number;
+        tds: number;
+        dissolvedOxygen: number;
+        heavyMetals: number;
+      } | null,
+    ) => {
+      const key = pt ? pt.time : null;
+      if (lastHoveredRef.current === key) return;
+      lastHoveredRef.current = key;
+      setHoveredPoint(pt);
+    },
+    [],
+  );
 
   // Generate synthetic smooth recent points if history is sparse (for live demo responsiveness)
   const chartData = React.useMemo(() => {
@@ -127,6 +156,24 @@ export function WaterQualityAreaChart({
     return points;
   }, [history, currentReading]);
 
+  const isHovered = hoveredPoint !== null;
+  const lastPoint = chartData[chartData.length - 1];
+  const activePh = isHovered
+    ? hoveredPoint.ph
+    : (currentReading?.ph ?? lastPoint?.ph ?? 7.35);
+  const activeTurb = isHovered
+    ? hoveredPoint.turbidity
+    : (currentReading?.turbidity ?? lastPoint?.turbidity ?? 0.85);
+  const activeTds = isHovered
+    ? hoveredPoint.tds
+    : (currentReading?.tds ?? lastPoint?.tds ?? 142);
+  const activeDo = isHovered
+    ? hoveredPoint.dissolvedOxygen
+    : (currentReading?.dissolvedOxygen ?? lastPoint?.dissolvedOxygen ?? 7.8);
+  const activeMetals = isHovered
+    ? hoveredPoint.heavyMetals
+    : (currentReading?.heavyMetals ?? lastPoint?.heavyMetals ?? 0.002);
+
   return (
     <Card className={className}>
       <CardHeader className="p-4 pb-2 sm:p-5 sm:pb-3">
@@ -152,7 +199,7 @@ export function WaterQualityAreaChart({
               className="h-7 px-2.5 text-[11px] font-semibold"
               onClick={() => setActiveMetric("all")}
             >
-              Composite
+              All Channels
             </Button>
             <Button
               variant={activeMetric === "ph" ? "default" : "outline"}
@@ -193,28 +240,37 @@ export function WaterQualityAreaChart({
       <CardContent className="p-4 pt-2 sm:p-5 sm:pt-2">
         {/* Active Metric Badge Banner */}
         <div className="bg-muted/50 mb-3 flex items-center justify-between rounded-lg px-3 py-1.5 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground font-medium">Viewing:</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-muted-foreground font-medium">
+              {isHovered ? `Point [${hoveredPoint.time}]:` : "Viewing:"}
+            </span>
             <span className="text-foreground font-bold">
               {activeMetric === "all" &&
-                "All Parameters (Multi-Gradient Stream)"}
-              {activeMetric === "ph" && "pH Level (Safe Range: 6.5 – 8.5)"}
+                (isHovered
+                  ? `pH ${activePh.toFixed(2)} | Turb ${activeTurb.toFixed(2)} NTU | TDS ${Math.round(activeTds)} ppm | Metals ${activeMetals.toFixed(3)} ppm`
+                  : "All Parameters (Multi-Gradient Stream)")}
+              {activeMetric === "ph" &&
+                `pH Level: ${activePh.toFixed(2)} (Safe: 6.5 – 8.5)`}
               {activeMetric === "turbidity" &&
-                "Optical Turbidity (Permissible Limit: < 5.0 NTU)"}
+                `Turbidity: ${activeTurb.toFixed(2)} NTU (Limit: < 5.0 NTU)`}
               {activeMetric === "tds" &&
-                "Total Dissolved Solids (Target: < 500 ppm)"}
+                `TDS: ${Math.round(activeTds)} ppm (Target: < 500 ppm)`}
               {activeMetric === "heavyMetals" &&
-                "Toxic Heavy Metals (Gatekeeper Threshold: < 0.010 ppm)"}
+                `Toxic Heavy Metals: ${activeMetals.toFixed(3)} ppm (Limit: < 0.010 ppm)`}
               {activeMetric === "dissolvedOxygen" &&
-                "Dissolved Oxygen (Potable Target: > 6.5 mg/L)"}
+                `Dissolved Oxygen: ${activeDo.toFixed(2)} mg/L (Target: > 6.5 mg/L)`}
             </span>
           </div>
 
           <Badge
             variant="outline"
-            className="border-emerald-500/30 bg-emerald-500/10 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400"
+            className={
+              isHovered
+                ? "animate-pulse border-[var(--brand-secondary)]/50 bg-[var(--brand-secondary)]/10 text-[10px] font-bold text-[var(--brand-secondary)]"
+                : "border-emerald-500/30 bg-emerald-500/10 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400"
+            }
           >
-            ● Live Stream
+            {isHovered ? `● Inspecting ${hoveredPoint.time}` : "● Live Stream"}
           </Badge>
         </div>
 
@@ -222,6 +278,29 @@ export function WaterQualityAreaChart({
           <AreaChart
             data={chartData}
             margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            onMouseMove={(state: any) => {
+              const idx =
+                typeof state?.activeTooltipIndex === "number"
+                  ? state.activeTooltipIndex
+                  : typeof state?.activeIndex === "number"
+                    ? state.activeIndex
+                    : -1;
+              const p =
+                (state?.activePayload && state.activePayload[0]?.payload) ||
+                (idx >= 0 && idx < chartData.length ? chartData[idx] : null);
+
+              if (p) {
+                handleHoverSync({
+                  time: String(p.time),
+                  ph: Number(p.ph),
+                  turbidity: Number(p.turbidity),
+                  tds: Number(p.tds),
+                  dissolvedOxygen: Number(p.dissolvedOxygen),
+                  heavyMetals: Number(p.heavyMetals),
+                });
+              }
+            }}
+            onMouseLeave={() => handleHoverSync(null)}
           >
             <defs>
               <linearGradient id="colorPh" x1="0" y1="0" x2="0" y2="1">
@@ -374,28 +453,40 @@ export function WaterQualityAreaChart({
         <div className="border-border/60 mt-3 flex flex-wrap items-center justify-center gap-4 border-t pt-3 text-xs">
           <div className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-[#10b981]" />
-            <span className="text-foreground font-semibold">pH</span>
+            <span className="text-foreground font-semibold">pH:</span>
+            <span className="telemetry-val text-foreground font-black">
+              {activePh.toFixed(2)}
+            </span>
             <span className="text-muted-foreground text-[11px]">
               (6.5–8.5 Safe)
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-[#06b6d4]" />
-            <span className="text-foreground font-semibold">Turbidity</span>
+            <span className="text-foreground font-semibold">Turbidity:</span>
+            <span className="telemetry-val text-foreground font-black">
+              {activeTurb.toFixed(2)} NTU
+            </span>
             <span className="text-muted-foreground text-[11px]">
               (&lt; 5 NTU)
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-[#f59e0b]" />
-            <span className="text-foreground font-semibold">TDS</span>
+            <span className="text-foreground font-semibold">TDS:</span>
+            <span className="telemetry-val text-foreground font-black">
+              {Math.round(activeTds)} ppm
+            </span>
             <span className="text-muted-foreground text-[11px]">
               (&lt; 500 ppm)
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-[#e45c10]" />
-            <span className="text-foreground font-semibold">Heavy Metals</span>
+            <span className="text-foreground font-semibold">Heavy Metals:</span>
+            <span className="telemetry-val text-foreground font-black">
+              {activeMetals.toFixed(3)} ppm
+            </span>
             <span className="text-muted-foreground text-[11px]">
               (&lt; 0.010 ppm)
             </span>

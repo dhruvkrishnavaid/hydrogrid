@@ -70,8 +70,8 @@ export interface PurificationStatus {
 }
 
 export interface FlowStatus {
-  inletFlowRate: number;
-  outletFlowRate: number;
+  flowRate: number;
+  nominalFlowRate?: number;
   mismatchPercent: number;
   leakStatus: "NORMAL" | "LEAK_DETECTED" | "ISOLATED";
   valveStatus: "OPEN" | "CLOSED";
@@ -129,8 +129,7 @@ export interface WaterQualityHistoryPoint {
 
 export interface FlowHistoryPoint {
   timestamp: string;
-  inletFlowRate: number;
-  outletFlowRate: number;
+  flowRate: number;
   differencePercent: number;
 }
 

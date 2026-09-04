@@ -7,6 +7,7 @@ export interface SiteTelemetryState {
   deviceId?: string | null;
   reading: WaterQualityReading;
   safety: WaterSafetyResult;
+  flowMismatchPercent?: number;
   updatedAt: string;
 }
 
@@ -24,6 +25,7 @@ export async function recordTelemetry(
   safety: WaterSafetyResult,
   deviceId?: string | null,
   timestamp?: Date,
+  flowMismatchPercent?: number,
 ): Promise<SiteTelemetryState> {
   const now = (timestamp ?? new Date()).toISOString();
 
@@ -32,6 +34,7 @@ export async function recordTelemetry(
     deviceId: deviceId ?? null,
     reading,
     safety,
+    flowMismatchPercent,
     updatedAt: now,
   };
 

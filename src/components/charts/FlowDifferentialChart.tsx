@@ -1,3 +1,4 @@
+import * as React from "react";
 import {
   Bar,
   BarChart,
@@ -29,6 +30,14 @@ interface FlowDifferentialChartProps {
   history: Array<FlowHistoryPoint>;
   currentMismatch?: number;
   isLeak?: boolean;
+  onHoverChange?: (
+    point: {
+      flowRate: number;
+      difference: number;
+      time: string;
+      timestamp: string;
+    } | null,
+  ) => void;
   className?: string;
 }
 
@@ -36,8 +45,34 @@ export function FlowDifferentialChart({
   history,
   currentMismatch: _currentMismatch = 0.0,
   isLeak = false,
+  onHoverChange,
   className,
 }: FlowDifferentialChartProps) {
+  const [hoveredPoint, setHoveredPoint] = React.useState<{
+    time: string;
+    mismatch: number;
+  } | null>(null);
+
+  const lastHoveredRef = React.useRef<string | null>(null);
+
+  const handleHoverSync = React.useCallback(
+    (
+      pt: {
+        flowRate: number;
+        difference: number;
+        time: string;
+        timestamp: string;
+      } | null,
+    ) => {
+      const key = pt ? `${pt.time}-${pt.timestamp}` : null;
+      if (lastHoveredRef.current === key) return;
+      lastHoveredRef.current = key;
+      setHoveredPoint(pt ? { time: pt.time, mismatch: pt.difference } : null);
+      onHoverChange?.(pt);
+    },
+    [onHoverChange],
+  );
+
   const chartConfig = {
     mismatch: {
       label: "Mismatch Differential (%)",
@@ -55,46 +90,89 @@ export function FlowDifferentialChart({
     return {
       time: timeStr,
       timestamp: point.timestamp,
+      flowRate: Number(point.flowRate.toFixed(1)),
+      difference: val,
       mismatch: val,
       color: val >= 15.0 ? "#ef4444" : val >= 6.0 ? "#f59e0b" : "#10b981",
     };
   });
 
+  const isHovered = hoveredPoint !== null;
+  const dispMismatch = isHovered ? hoveredPoint.mismatch : _currentMismatch;
+  const dispIsLeak = dispMismatch >= 15.0 || isLeak;
+
   return (
-    <Card className={className}>
+    <Card
+      className={className}
+      onMouseLeave={() => {
+        handleHoverSync(null);
+      }}
+    >
       <CardHeader className="p-4 pb-2 sm:p-5 sm:pb-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
               <span
                 className={`size-2 rounded-full ${
-                  isLeak
+                  dispIsLeak
                     ? "animate-ping bg-red-500"
                     : "animate-pulse bg-emerald-500"
                 }`}
               />
               <CardTitle className="text-foreground text-sm font-bold">
-                Mass-Balance Differential & Automated Trip Envelope
+                Surge Differential & Automated Trip Envelope
               </CardTitle>
             </div>
             <CardDescription className="text-xs">
-              Continuous differential calculation |Q₁ - Q₂| / Q₁ × 100% against
-              the 15.0% trip threshold
+              Surge calculation: Flow &gt; 45.0 L/min assumed leak condition
+              (Lower flow is not a leak threat)
             </CardDescription>
           </div>
 
-          <Badge
-            variant={isLeak ? "destructive" : "outline"}
-            className={
-              !isLeak
-                ? "border-emerald-500/30 bg-emerald-500/10 text-[10px] font-bold text-emerald-700 dark:text-emerald-400"
-                : "text-[10px] font-bold"
-            }
-          >
-            {isLeak
-              ? "⚠ PIPELINE BREACH DETECTED"
-              : "✓ INTEGRITY INTACT (< 15.0%)"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <div
+              className={`rounded-lg border px-2.5 py-1 text-right transition-colors ${
+                isHovered
+                  ? "border-amber-500/50 bg-amber-500/10 ring-1 ring-amber-500/30"
+                  : "border-border/80 bg-muted/40"
+              }`}
+            >
+              <span className="text-muted-foreground flex items-center justify-end gap-1 text-[9px] font-bold uppercase">
+                {isHovered ? (
+                  <>
+                    <span className="size-1.5 animate-pulse rounded-full bg-amber-500" />
+                    Mismatch ({hoveredPoint.time})
+                  </>
+                ) : (
+                  "Current Mismatch"
+                )}
+              </span>
+              <span
+                className={`telemetry-val font-black ${
+                  dispMismatch >= 15.0
+                    ? "text-red-600 dark:text-red-400"
+                    : dispMismatch >= 6.0
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-emerald-600 dark:text-emerald-400"
+                }`}
+              >
+                {dispMismatch.toFixed(1)}%
+              </span>
+            </div>
+
+            <Badge
+              variant={dispIsLeak ? "destructive" : "outline"}
+              className={
+                !dispIsLeak
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-[10px] font-bold text-emerald-700 dark:text-emerald-400"
+                  : "text-[10px] font-bold"
+              }
+            >
+              {dispIsLeak
+                ? "⚠ PIPELINE BREACH DETECTED"
+                : "✓ INTEGRITY INTACT (< 15.0%)"}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
 
@@ -103,6 +181,29 @@ export function FlowDifferentialChart({
           <BarChart
             data={chartData}
             margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            onMouseMove={(state: any) => {
+              const idx =
+                typeof state?.activeTooltipIndex === "number"
+                  ? state.activeTooltipIndex
+                  : typeof state?.activeIndex === "number"
+                    ? state.activeIndex
+                    : -1;
+              const p =
+                (state?.activePayload && state.activePayload[0]?.payload) ||
+                (idx >= 0 && idx < chartData.length ? chartData[idx] : null);
+
+              if (p) {
+                handleHoverSync({
+                  time: String(p.time),
+                  timestamp: String(p.timestamp),
+                  flowRate: Number(p.flowRate ?? 45.0),
+                  difference: Number(p.difference ?? p.mismatch ?? 0.0),
+                });
+              }
+            }}
+            onMouseLeave={() => {
+              handleHoverSync(null);
+            }}
           >
             <CartesianGrid
               strokeDasharray="3 3"
@@ -128,23 +229,19 @@ export function FlowDifferentialChart({
               content={
                 <ChartTooltipContent
                   indicator="dot"
-                  formatter={(val, _, item) => (
+                  formatter={(val: any, _: any, item: any) => (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between gap-4 font-bold">
                         <span>Differential Mismatch:</span>
                         <span
                           className="telemetry-val"
-                          style={{ color: item.payload.color }}
+                          style={{ color: item?.payload?.color }}
                         >
                           {val}%
                         </span>
                       </div>
                       <div className="text-muted-foreground text-[10px]">
-                        {Number(val) >= 15.0
-                          ? "CRITICAL: Exceeds 15% threshold — Solenoid closed"
-                          : Number(val) >= 6.0
-                            ? "WARNING: Hydraulic variance elevated"
-                            : "NOMINAL: Zero significant distribution loss"}
+                        Safe Threshold: &lt; 15.0%
                       </div>
                     </div>
                   )}

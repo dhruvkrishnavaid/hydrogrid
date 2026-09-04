@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
 
 import {
   checkUserSiteAccess,
@@ -7,20 +6,9 @@ import {
   hasRequiredRole,
 } from "../../../../server/auth/authorization";
 import { verifyAuthUser } from "../../../../server/auth/verify";
-import {
-  getCalibrationsBySiteId,
-  recordCalibration,
-} from "../../../../server/repositories/calibrations";
+import { getCalibrationsBySiteId } from "../../../../server/repositories/calibrations";
+import { processCalibrationIngestion } from "../../../../server/services/ingestion";
 import { apiError, apiSuccess } from "../../../../server/utils/response";
-
-const RecordCalibrationSchema = z.object({
-  sensor: z.string(),
-  offset: z.number().default(0),
-  deviceId: z.string().uuid().optional().nullable(),
-  status: z
-    .enum(["HEALTHY", "DEGRADED", "CALIBRATION_REQUIRED", "FAULT"])
-    .optional(),
-});
 
 export const Route = createFileRoute("/api/sites/$siteId/calibration")({
   server: {
@@ -67,27 +55,17 @@ export const Route = createFileRoute("/api/sites/$siteId/calibration")({
           return apiError("BAD_REQUEST", "Invalid JSON payload", 400);
         }
 
-        const parsed = RecordCalibrationSchema.safeParse(bodyJson);
-        if (!parsed.success) {
-          return apiError(
-            "VALIDATION_ERROR",
-            "Invalid calibration payload",
-            400,
-            parsed.error.flatten(),
-          );
+        try {
+          const result = await processCalibrationIngestion(siteId, bodyJson, {
+            source: "HTTP",
+          });
+
+          return apiSuccess(result, 201);
+        } catch (err: unknown) {
+          const message =
+            err instanceof Error ? err.message : "Failed to record calibration";
+          return apiError("VALIDATION_ERROR", message, 400);
         }
-
-        const { sensor, offset, deviceId, status } = parsed.data;
-
-        const recorded = await recordCalibration({
-          site_id: siteId,
-          device_id: deviceId,
-          sensor,
-          offset,
-          status: status ?? "HEALTHY",
-        });
-
-        return apiSuccess({ calibration: recorded }, 201);
       },
     },
   },

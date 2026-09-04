@@ -169,7 +169,7 @@ export const SimulatorDrawer: React.FC = () => {
                   className="h-auto justify-start border-rose-500/30 bg-rose-500/5 py-2 text-xs font-semibold text-rose-800 hover:bg-rose-500/15 dark:text-rose-300"
                 >
                   <IconAlertTriangle className="mr-1.5 size-3.5 shrink-0 text-rose-600" />
-                  <span>Pipe Leak (30%)</span>
+                  <span>Pipe Leak (&gt;47.25)</span>
                 </Button>
               </div>
             </div>

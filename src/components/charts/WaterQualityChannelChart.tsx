@@ -1,3 +1,4 @@
+import * as React from "react";
 import {
   Area,
   AreaChart,
@@ -39,6 +40,9 @@ interface WaterQualityChannelChartProps {
     whoStandard: string;
   };
   currentValue?: number;
+  onHoverChange?: (
+    point: { value: number; timestamp: string; timeStr: string } | null,
+  ) => void;
   className?: string;
 }
 
@@ -59,8 +63,35 @@ export function WaterQualityChannelChart({
   selectedParam,
   paramMeta,
   currentValue,
+  onHoverChange,
   className,
 }: WaterQualityChannelChartProps) {
+  const [hoveredPoint, setHoveredPoint] = React.useState<{
+    value: number;
+    time: string;
+    timestamp: string;
+  } | null>(null);
+
+  const lastHoveredRef = React.useRef<string | null>(null);
+
+  const handleHoverSync = React.useCallback(
+    (
+      pt: {
+        value: number;
+        time: string;
+        timestamp: string;
+        timeStr: string;
+      } | null,
+    ) => {
+      const key = pt ? `${pt.time}-${pt.timestamp}` : null;
+      if (lastHoveredRef.current === key) return;
+      lastHoveredRef.current = key;
+      setHoveredPoint(pt);
+      onHoverChange?.(pt);
+    },
+    [onHoverChange],
+  );
+
   const color = channelColors[selectedParam] ?? "#10b981";
 
   const chartConfig = {
@@ -93,6 +124,9 @@ export function WaterQualityChannelChart({
 
   const gradientId = `grad-${selectedParam}`;
 
+  const isHovered = hoveredPoint !== null;
+  const displayedValue = isHovered ? hoveredPoint.value : currentValue;
+
   return (
     <Card className={className}>
       <CardHeader className="p-4 pb-2 sm:p-5 sm:pb-3">
@@ -118,13 +152,26 @@ export function WaterQualityChannelChart({
 
           {/* Metric Summary Pills */}
           <div className="flex items-center gap-2 text-xs">
-            <div className="border-border/80 bg-muted/40 rounded-lg border px-2.5 py-1 text-right">
-              <span className="text-muted-foreground block text-[9px] font-bold uppercase">
-                Current
+            <div
+              className={`rounded-lg border px-2.5 py-1 text-right transition-colors ${
+                isHovered
+                  ? "border-[var(--brand-secondary)]/50 bg-[var(--brand-secondary)]/10 ring-1 ring-[var(--brand-secondary)]/30"
+                  : "border-border/80 bg-muted/40"
+              }`}
+            >
+              <span className="text-muted-foreground flex items-center justify-end gap-1 text-[9px] font-bold uppercase">
+                {isHovered ? (
+                  <>
+                    <span className="size-1.5 animate-pulse rounded-full bg-cyan-500" />
+                    Hovered ({hoveredPoint.time})
+                  </>
+                ) : (
+                  "Current"
+                )}
               </span>
               <span className="telemetry-val text-foreground font-black">
-                {currentValue !== undefined
-                  ? currentValue.toFixed(
+                {displayedValue !== undefined
+                  ? displayedValue.toFixed(
                       selectedParam === "heavyMetals" ? 4 : 2,
                     )
                   : "--"}{" "}
@@ -160,6 +207,29 @@ export function WaterQualityChannelChart({
           <AreaChart
             data={chartData}
             margin={{ top: 10, right: 10, left: -15, bottom: 0 }}
+            onMouseMove={(state: any) => {
+              const idx =
+                typeof state?.activeTooltipIndex === "number"
+                  ? state.activeTooltipIndex
+                  : typeof state?.activeIndex === "number"
+                    ? state.activeIndex
+                    : -1;
+              const payload =
+                (state?.activePayload && state.activePayload[0]?.payload) ||
+                (idx >= 0 && idx < chartData.length ? chartData[idx] : null);
+
+              if (payload) {
+                handleHoverSync({
+                  value: Number(payload.value),
+                  time: String(payload.time),
+                  timestamp: String(payload.timestamp),
+                  timeStr: String(payload.time),
+                });
+              }
+            }}
+            onMouseLeave={() => {
+              handleHoverSync(null);
+            }}
           >
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -197,7 +267,7 @@ export function WaterQualityChannelChart({
               content={
                 <ChartTooltipContent
                   indicator="dot"
-                  labelFormatter={(_, payload) => {
+                  labelFormatter={(_: any, payload: any) => {
                     const item = payload?.[0]?.payload;
                     return item?.timestamp
                       ? new Date(item.timestamp).toLocaleString()

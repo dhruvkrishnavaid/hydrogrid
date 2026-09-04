@@ -1,6 +1,6 @@
 import { IconAlertTriangle, IconGauge, IconLoader2 } from "@tabler/icons-react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -21,14 +21,15 @@ import { FlowTelemetryDualChart } from "../components/charts/FlowTelemetryDualCh
 import { api } from "../lib/api-client";
 import { useAuth } from "../lib/auth-context";
 import type { FlowHistoryPoint } from "../lib/types";
+import { useSSE } from "../lib/use-sse";
 
 export const Route = createFileRoute("/flow")({
   component: FlowPage,
 });
 
 interface FlowCurrentData {
-  inlet: number;
-  outlet: number;
+  flowRate: number;
+  nominalFlowRate?: number;
   differencePercent: number;
   thresholdPercent: number;
   status: string;
@@ -36,11 +37,69 @@ interface FlowCurrentData {
 }
 
 function FlowPage() {
-  const { activeSiteId } = useAuth();
+  const { activeSiteId, token } = useAuth();
   const [flowCurrent, setFlowCurrent] = useState<FlowCurrentData | null>(null);
+  const [hoveredFlowPoint, setHoveredFlowPoint] = useState<{
+    flowRate: number;
+    difference: number;
+    time: string;
+    timestamp: string;
+  } | null>(null);
+
+  const handleHoverFlowPoint = useCallback(
+    (
+      pt: {
+        flowRate?: number;
+        difference?: number;
+        time: string;
+        timestamp: string;
+      } | null,
+    ) => {
+      if (pt && typeof pt.flowRate === "number") {
+        setHoveredFlowPoint({
+          flowRate: pt.flowRate,
+          difference: pt.difference ?? 0.0,
+          time: pt.time,
+          timestamp: pt.timestamp,
+        });
+      } else {
+        setHoveredFlowPoint(null);
+      }
+    },
+    [],
+  );
+
   const [history, setHistory] = useState<Array<FlowHistoryPoint>>([]);
   const [interval, setInterval] = useState<string>("5m");
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useSSE({
+    siteId: activeSiteId,
+    token,
+    onEvent: (type, eventData: any) => {
+      if (type === "flow.updated" && eventData?.flow) {
+        setFlowCurrent({
+          flowRate: eventData.flow.flowRate ?? 45.0,
+          nominalFlowRate: 45.0,
+          differencePercent: eventData.flow.mismatchPercent ?? 0.0,
+          thresholdPercent: 15.0,
+          status: eventData.flow.leakStatus ?? "NORMAL",
+          isolationValve: eventData.flow.valveStatus ?? "OPEN",
+        });
+      } else if (type === "leak.detected") {
+        setFlowCurrent((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: "LEAK_DETECTED",
+                isolationValve: "CLOSED",
+                differencePercent: eventData?.mismatchPercent ?? 30.0,
+              }
+            : null,
+        );
+      }
+    },
+  });
 
   useEffect(() => {
     const siteId = activeSiteId ?? "00000000-0000-0000-0000-000000000001";
@@ -52,11 +111,11 @@ function FlowPage() {
     ])
       .then(([curr, hist]) => {
         setFlowCurrent({
-          inlet: curr.inlet ?? 45.0,
-          outlet: curr.outlet ?? curr.outletFlowRate ?? 45.0,
+          flowRate: curr.flowRate ?? 33.0,
+          nominalFlowRate: 45.0,
           differencePercent:
             curr.differencePercent ?? curr.mismatchPercent ?? 0.0,
-          thresholdPercent: curr.thresholdPercent ?? 15.0,
+          thresholdPercent: curr.thresholdPercent ?? 5.0,
           status: curr.leakStatus ?? "NORMAL",
           isolationValve: curr.isolationValve ?? curr.valveStatus ?? "OPEN",
         });
@@ -70,11 +129,11 @@ function FlowPage() {
         .getFlowCurrent(siteId)
         .then((curr) => {
           setFlowCurrent({
-            inlet: curr.inlet ?? 45.0,
-            outlet: curr.outlet ?? curr.outletFlowRate ?? 45.0,
+            flowRate: curr.flowRate ?? 33.0,
+            nominalFlowRate: 45.0,
             differencePercent:
               curr.differencePercent ?? curr.mismatchPercent ?? 0.0,
-            thresholdPercent: curr.thresholdPercent ?? 15.0,
+            thresholdPercent: curr.thresholdPercent ?? 5.0,
             status: curr.leakStatus ?? "NORMAL",
             isolationValve: curr.isolationValve ?? curr.valveStatus ?? "OPEN",
           });
@@ -85,9 +144,11 @@ function FlowPage() {
     return () => window.clearInterval(pollId);
   }, [activeSiteId, interval]);
 
+  // Leak trips only when flow surges above 5% of rated capacity (>47.25 L/min)
   const isLeak =
     flowCurrent?.status === "LEAK_DETECTED" ||
-    (flowCurrent?.differencePercent ?? 0) > 15.0;
+    (flowCurrent?.flowRate ?? 33.0) > 47.25 ||
+    (flowCurrent?.differencePercent ?? 0) > 5.0;
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
@@ -98,8 +159,8 @@ function FlowPage() {
             Hydraulic Flow & Pipeline Leak Protection
           </h1>
           <p className="text-muted-foreground mt-0.5 text-xs">
-            Continuous mass-balance differential verification: Q₁ (Intake) vs Q₂
-            (Distribution)
+            Node Zero surge protection: Leak trips when flow exceeds 47.25 L/min
+            (5% above rated 45.0 L/min). Typical demand: 30–35 L/min.
           </p>
         </div>
 
@@ -129,167 +190,220 @@ function FlowPage() {
             Pipeline Leak Detected — Automated Isolation Engaged
           </AlertTitle>
           <AlertDescription className="mt-1 text-xs leading-relaxed">
-            Flow mismatch ({flowCurrent?.differencePercent.toFixed(1)}%)
-            exceeded the 15.0% trip limit. The distribution isolation valve has
-            been automatically closed to halt downstream loss.
+            Measured flow rate ({flowCurrent?.flowRate.toFixed(1)} L/min)
+            exceeded the 45.0 L/min rated maximum design capacity. The solenoid
+            isolation valve has been automatically closed to halt line loss.
           </AlertDescription>
         </Alert>
       )}
 
-      {/* 1. Mass-Balance Flow Stage Chain */}
+      {/* 1. Node Zero Baseline Differential Stage Chain */}
       <Card className="shadow-2xs">
         <CardHeader className="p-6 pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
-              Mass-Balance Hydraulic Pipeline (Q₁ → Δ → Q₂)
+              Hydraulic Stage Verification (Node Zero → Baseline Differential →
+              Solenoid Valve)
             </CardTitle>
             <Badge variant="outline" className="text-xs font-semibold">
-              Trip Threshold: 15.0% Differential
+              Leak Limit: &gt; 47.25 L/min (5%)
             </Badge>
           </div>
         </CardHeader>
 
         <CardContent className="p-6 pt-0">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {/* Intake Node */}
-            <Card className="border-border/80 bg-muted/20 shadow-2xs">
-              <CardHeader className="p-4 pb-2">
-                <div className="flex items-center gap-2">
-                  <IconGauge className="size-4 text-[var(--brand-secondary)]" />
-                  <CardTitle className="text-foreground text-xs font-bold uppercase">
-                    1. Intake Inflow (Q₁)
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 pt-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="telemetry-val text-foreground text-4xl font-black">
-                    {flowCurrent?.inlet ?? 45.0}
-                  </span>
-                  <span className="text-muted-foreground text-sm font-semibold">
-                    L/min
-                  </span>
-                </div>
-                <p className="text-muted-foreground mt-2 text-xs">
-                  Volumetric inflow measured at the primary raw extraction pump.
-                </p>
-              </CardContent>
-            </Card>
+          {(() => {
+            const isHovered = hoveredFlowPoint !== null;
+            const activeFlow = isHovered
+              ? hoveredFlowPoint.flowRate
+              : (flowCurrent?.flowRate ?? 33.0);
+            const activeDiff = isHovered
+              ? hoveredFlowPoint.difference
+              : (flowCurrent?.differencePercent ?? 0.0);
+            const effectiveIsLeak =
+              (!isHovered && flowCurrent?.status === "LEAK_DETECTED") ||
+              activeFlow > 47.25 ||
+              activeDiff > 5.0;
 
-            {/* Pipeline Differential Verification */}
-            <Card
-              className={`border shadow-2xs ${
-                isLeak
-                  ? "border-rose-500/40 bg-rose-500/5 dark:bg-rose-950/20"
-                  : "border-border/80 bg-muted/20"
-              }`}
-            >
-              <CardHeader className="p-4 pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs font-bold uppercase">
-                    2. Pipeline Differential (Δ)
-                  </CardTitle>
-                  <Badge
-                    variant={!isLeak ? "default" : "destructive"}
-                    className={
-                      !isLeak
-                        ? "border-emerald-500/30 bg-emerald-500/15 text-[10px] text-emerald-800 dark:text-emerald-300"
-                        : "text-[10px]"
-                    }
-                  >
-                    {flowCurrent?.status ?? "NORMAL"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 pt-1">
-                <div className="flex items-baseline gap-2">
-                  <span
-                    className={`telemetry-val text-4xl font-black ${
-                      isLeak
-                        ? "font-black text-rose-600 dark:text-rose-400"
-                        : "text-emerald-700 dark:text-emerald-400"
-                    }`}
-                  >
-                    {flowCurrent?.differencePercent.toFixed(1) ?? "0.0"}%
-                  </span>
-                  <span className="text-muted-foreground text-xs">
-                    Mismatch
-                  </span>
-                </div>
+            return (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {/* Node Zero Measured Flow */}
+                <Card className="border-border/80 bg-muted/20 shadow-2xs">
+                  <CardHeader className="p-4 pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <IconGauge className="size-4 text-[var(--brand-secondary)]" />
+                        <CardTitle className="text-foreground text-xs font-bold uppercase">
+                          1. Node Zero Flow (Q)
+                        </CardTitle>
+                      </div>
+                      {isHovered && (
+                        <Badge
+                          variant="outline"
+                          className="border-cyan-500/40 bg-cyan-500/10 text-[10px] font-medium text-cyan-700 dark:text-cyan-300"
+                        >
+                          ● Point {hoveredFlowPoint.time}
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="telemetry-val text-foreground text-4xl font-black">
+                        {activeFlow.toFixed(1)}
+                      </span>
+                      <span className="text-muted-foreground text-sm font-semibold">
+                        L/min
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground mt-2 text-xs">
+                      Single ultrasonic flow rate transducer at Node Zero
+                      extraction manifold.
+                    </p>
+                  </CardContent>
+                </Card>
 
-                <div className="mt-2.5">
-                  <Progress
-                    value={Math.min(
-                      100,
-                      ((flowCurrent?.differencePercent ?? 0) / 15.0) * 100,
-                    )}
-                    className="h-2.5 w-full"
-                    indicatorClassName={
-                      isLeak ? "bg-rose-500" : "bg-emerald-500"
-                    }
-                  />
-                </div>
+                {/* Pipeline Differential Verification */}
+                <Card
+                  className={`border shadow-2xs transition-colors ${
+                    effectiveIsLeak
+                      ? "border-rose-500/40 bg-rose-500/5 dark:bg-rose-950/20"
+                      : "border-border/80 bg-muted/20"
+                  }`}
+                >
+                  <CardHeader className="p-4 pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-xs font-bold uppercase">
+                        2. Surge Differential (Δ)
+                      </CardTitle>
+                      <div className="flex items-center gap-1.5">
+                        {isHovered && (
+                          <Badge
+                            variant="outline"
+                            className="border-cyan-500/40 bg-cyan-500/10 text-[10px] font-medium text-cyan-700 dark:text-cyan-300"
+                          >
+                            ● Point {hoveredFlowPoint.time}
+                          </Badge>
+                        )}
+                        <Badge
+                          variant={!effectiveIsLeak ? "default" : "destructive"}
+                          className={
+                            !effectiveIsLeak
+                              ? "border-emerald-500/30 bg-emerald-500/15 text-[10px] text-emerald-800 dark:text-emerald-300"
+                              : "text-[10px]"
+                          }
+                        >
+                          {effectiveIsLeak ? "LEAK_DETECTED" : "NORMAL"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-1">
+                    <div className="flex items-baseline gap-2">
+                      <span
+                        className={`telemetry-val text-4xl font-black ${
+                          effectiveIsLeak
+                            ? "font-black text-rose-600 dark:text-rose-400"
+                            : "text-emerald-700 dark:text-emerald-400"
+                        }`}
+                      >
+                        {activeDiff.toFixed(1)}%
+                      </span>
+                      <span className="text-muted-foreground text-xs">
+                        Surge
+                      </span>
+                    </div>
 
-                <p className="text-muted-foreground mt-2 text-xs">
-                  Mass-balance differential: |Q₁ - Q₂| / Q₁ × 100%. Safe trip
-                  limit is 15.0%.
-                </p>
-              </CardContent>
-            </Card>
+                    <div className="mt-2.5">
+                      <Progress
+                        value={effectiveIsLeak ? 100 : 0}
+                        className="h-2.5 w-full"
+                        indicatorClassName={
+                          effectiveIsLeak ? "bg-rose-500" : "bg-emerald-500"
+                        }
+                      />
+                    </div>
 
-            {/* Distribution Outlet */}
-            <Card className="border-border/80 bg-muted/20 shadow-2xs">
-              <CardHeader className="p-4 pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-foreground text-xs font-bold uppercase">
-                    3. Distribution Meter (Q₂)
-                  </CardTitle>
-                  <Badge
-                    variant={
-                      flowCurrent?.isolationValve === "OPEN"
-                        ? "default"
-                        : "destructive"
-                    }
-                    className={
-                      flowCurrent?.isolationValve === "OPEN"
-                        ? "border-emerald-500/30 bg-emerald-500/15 text-[10px] text-emerald-800 dark:text-emerald-300"
-                        : "text-[10px]"
-                    }
-                  >
-                    Valve: {flowCurrent?.isolationValve ?? "OPEN"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 pt-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="telemetry-val text-foreground text-4xl font-black">
-                    {flowCurrent?.outlet ?? 45.0}
-                  </span>
-                  <span className="text-muted-foreground text-sm font-semibold">
-                    L/min
-                  </span>
-                </div>
-                <p className="text-muted-foreground mt-2 text-xs">
-                  Potable water delivered to community distribution network.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+                    <p className="text-muted-foreground mt-2 text-xs">
+                      Leak trips at &gt;47.25 L/min (5% above rated 45.0 L/min).
+                      Typical demand is 30–35 L/min — lower flow is never a
+                      threat.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Distribution Solenoid Valve */}
+                <Card className="border-border/80 bg-muted/20 shadow-2xs">
+                  <CardHeader className="p-4 pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-foreground text-xs font-bold uppercase">
+                        3. Solenoid Isolation Valve
+                      </CardTitle>
+                      <div className="flex items-center gap-1.5">
+                        {isHovered && (
+                          <Badge
+                            variant="outline"
+                            className="border-cyan-500/40 bg-cyan-500/10 text-[10px] font-medium text-cyan-700 dark:text-cyan-300"
+                          >
+                            ● Point {hoveredFlowPoint.time}
+                          </Badge>
+                        )}
+                        <Badge
+                          variant={
+                            !effectiveIsLeak &&
+                            flowCurrent?.isolationValve === "OPEN"
+                              ? "default"
+                              : "destructive"
+                          }
+                          className={
+                            !effectiveIsLeak &&
+                            flowCurrent?.isolationValve === "OPEN"
+                              ? "border-emerald-500/30 bg-emerald-500/15 text-[10px] text-emerald-800 dark:text-emerald-300"
+                              : "text-[10px]"
+                          }
+                        >
+                          Valve:{" "}
+                          {effectiveIsLeak
+                            ? "CLOSED"
+                            : (flowCurrent?.isolationValve ?? "OPEN")}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="telemetry-val text-foreground text-4xl font-black">
+                        {effectiveIsLeak
+                          ? "CLOSED"
+                          : (flowCurrent?.isolationValve ?? "OPEN")}
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground mt-2 text-xs">
+                      Automated 12V fail-safe solenoid valve isolating line when
+                      flow &gt; 47.25 L/min (5% above rated 45.0 L/min).
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 
-      {/* 1.5 Real-Time Dual-Flow & Differential Analytics Charts */}
+      {/* 1.5 Real-Time Flow & Differential Analytics Charts */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <FlowTelemetryDualChart
           history={history}
-          currentInlet={flowCurrent?.inlet}
-          currentOutlet={flowCurrent?.outlet}
+          currentFlow={flowCurrent?.flowRate}
+          nominalFlow={45.0}
+          onHoverChange={handleHoverFlowPoint}
           className="h-full shadow-2xs"
         />
         <FlowDifferentialChart
           history={history}
           currentMismatch={flowCurrent?.differencePercent}
           isLeak={isLeak}
+          onHoverChange={handleHoverFlowPoint}
           className="h-full shadow-2xs"
         />
       </div>
@@ -322,9 +436,11 @@ function FlowPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[240px]">Timestamp</TableHead>
-                  <TableHead className="w-[180px]">Intake Flow (Q₁)</TableHead>
-                  <TableHead className="w-[180px]">Outlet Flow (Q₂)</TableHead>
-                  <TableHead>Mismatch Differential</TableHead>
+                  <TableHead className="w-[180px]">
+                    Measured Flow Rate
+                  </TableHead>
+                  <TableHead className="w-[180px]">Rated Baseline</TableHead>
+                  <TableHead>Differential Mismatch</TableHead>
                   <TableHead className="w-[140px] text-right">
                     Integrity State
                   </TableHead>
@@ -343,7 +459,7 @@ function FlowPage() {
                       <TableCell>
                         <div className="flex items-baseline gap-1">
                           <span className="telemetry-val text-sm font-black text-cyan-600 dark:text-cyan-400">
-                            {h.inletFlowRate.toFixed(1)}
+                            {h.flowRate.toFixed(1)}
                           </span>
                           <span className="text-muted-foreground text-xs font-medium">
                             L/min
@@ -352,8 +468,8 @@ function FlowPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-baseline gap-1">
-                          <span className="telemetry-val text-sm font-black text-emerald-600 dark:text-emerald-400">
-                            {h.outletFlowRate.toFixed(1)}
+                          <span className="telemetry-val text-sm font-black text-amber-600 dark:text-amber-400">
+                            45.0
                           </span>
                           <span className="text-muted-foreground text-xs font-medium">
                             L/min

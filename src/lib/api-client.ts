@@ -152,8 +152,8 @@ export const api = {
   getFlowCurrent: (siteId: string) =>
     apiFetch<
       FlowStatus & {
-        inlet: number;
-        outlet: number;
+        flowRate: number;
+        nominalFlowRate?: number;
         differencePercent: number;
         thresholdPercent: number;
         isolationValve: string;

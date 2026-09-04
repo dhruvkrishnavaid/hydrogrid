@@ -10,11 +10,17 @@ export type SSEConnectionState =
 
 export interface UseSSEOptions {
   siteId?: string | null;
+  token?: string | null;
   onEvent?: (type: string, data: unknown) => void;
   enabled?: boolean;
 }
 
-export function useSSE({ siteId, onEvent, enabled = true }: UseSSEOptions) {
+export function useSSE({
+  siteId,
+  token: explicitToken,
+  onEvent,
+  enabled = true,
+}: UseSSEOptions = {}) {
   const [connectionState, setConnectionState] =
     useState<SSEConnectionState>("disconnected");
   const [lastEvent, setLastEvent] = useState<{
@@ -27,70 +33,95 @@ export function useSSE({ siteId, onEvent, enabled = true }: UseSSEOptions) {
   onEventRef.current = onEvent;
 
   useEffect(() => {
-    const token = getStoredToken();
-
-    // Do not attempt SSE connection without a siteId and token
-    if (!enabled || !siteId || !token || typeof window === "undefined") {
+    if (!enabled || !siteId || typeof window === "undefined") {
       setConnectionState("disconnected");
       return;
     }
 
-    const endpoint = `/api/sites/${encodeURIComponent(siteId)}/events/stream?token=${encodeURIComponent(token)}`;
+    const token = explicitToken ?? getStoredToken() ?? "demo-admin-token";
 
-    setConnectionState("connecting");
+    let eventSource: EventSource | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let isDisposed = false;
 
-    const eventSource = new EventSource(endpoint);
+    function connect() {
+      if (isDisposed) return;
 
-    eventSource.onopen = () => {
-      setConnectionState("connected");
-    };
+      const endpoint = `/api/sites/${encodeURIComponent(siteId!)}/events/stream?token=${encodeURIComponent(token)}`;
 
-    eventSource.onerror = () => {
-      // If error occurs, update status
-      setConnectionState("error");
-    };
+      setConnectionState("connecting");
 
-    const handleMessage = (type: string) => (e: MessageEvent) => {
-      try {
-        const parsed = JSON.parse(e.data);
-        const eventPayload = {
-          type,
-          data: parsed,
-          timestamp: new Date().toISOString(),
-        };
-        setLastEvent(eventPayload);
-        if (onEventRef.current) {
-          onEventRef.current(type, parsed);
+      eventSource = new EventSource(endpoint);
+
+      eventSource.onopen = () => {
+        if (isDisposed) return;
+        setConnectionState("connected");
+      };
+
+      eventSource.onerror = () => {
+        if (isDisposed) return;
+        setConnectionState("error");
+        eventSource?.close();
+        reconnectTimeout = setTimeout(() => {
+          if (!isDisposed) connect();
+        }, 3000);
+      };
+
+      const handleMessage = (type: string) => (e: MessageEvent) => {
+        try {
+          const parsed = JSON.parse(e.data);
+          const eventPayload = {
+            type,
+            data: parsed,
+            timestamp: new Date().toISOString(),
+          };
+          setLastEvent(eventPayload);
+          if (onEventRef.current) {
+            onEventRef.current(type, parsed);
+          }
+        } catch {
+          // ignore JSON parse error
         }
-      } catch {
-        // ignore JSON parse error
+      };
+
+      eventSource.onmessage = (e: MessageEvent) => {
+        handleMessage("message")(e);
+      };
+
+      const eventTypes = [
+        "connected",
+        "water-quality.updated",
+        "water-safety.updated",
+        "quality-gate.changed",
+        "flow.updated",
+        "leak.detected",
+        "leak.isolated",
+        "device.status-changed",
+        "sensor.health-changed",
+        "maintenance.updated",
+        "alert.created",
+        "alert.acknowledged",
+        "system.recovered",
+      ];
+
+      for (const evt of eventTypes) {
+        eventSource.addEventListener(evt, handleMessage(evt));
       }
-    };
-
-    const eventTypes = [
-      "connected",
-      "water-quality.updated",
-      "water-safety.updated",
-      "quality-gate.changed",
-      "flow.updated",
-      "leak.detected",
-      "leak.isolated",
-      "device.status-changed",
-      "sensor.health-changed",
-      "maintenance.updated",
-      "alert.created",
-      "system.recovered",
-    ];
-
-    for (const evt of eventTypes) {
-      eventSource.addEventListener(evt, handleMessage(evt));
     }
 
+    connect();
+
     return () => {
-      eventSource.close();
+      isDisposed = true;
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      if (eventSource) {
+        eventSource.close();
+      }
       setConnectionState("disconnected");
     };
-  }, [siteId, enabled]);
+  }, [siteId, enabled, explicitToken]);
 
   return { connectionState, lastEvent };
 }

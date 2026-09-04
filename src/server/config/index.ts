@@ -13,24 +13,43 @@ const optionalStringSchema = z.preprocess(
   z.string().min(1).optional(),
 );
 
-const serverEnvSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "test", "production"])
-    .default("development"),
-  PORT: z.coerce.number().default(3000),
+const serverEnvSchema = z
+  .object({
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .default("development"),
+    PORT: z.coerce.number().default(3000),
 
-  // Supabase (Current API Key Model)
-  SUPABASE_URL: optionalUrlSchema,
-  SUPABASE_PUBLISHABLE_KEY: optionalStringSchema,
-  SUPABASE_SECRET_KEY: optionalStringSchema,
-  SUPABASE_JWKS_URL: optionalUrlSchema,
+    // Supabase (Current API Key Model)
+    SUPABASE_URL: optionalUrlSchema,
+    SUPABASE_PUBLISHABLE_KEY: optionalStringSchema,
+    SUPABASE_SECRET_KEY: optionalStringSchema,
+    SUPABASE_JWKS_URL: optionalUrlSchema,
 
-  // InfluxDB
-  INFLUXDB_URL: optionalUrlSchema,
-  INFLUXDB_TOKEN: optionalStringSchema,
-  INFLUXDB_ORG: optionalStringSchema,
-  INFLUXDB_BUCKET: optionalStringSchema,
-});
+    // InfluxDB
+    INFLUXDB_URL: optionalUrlSchema,
+    INFLUXDB_TOKEN: optionalStringSchema,
+    INFLUXDB_ORG: optionalStringSchema,
+    INFLUXDB_BUCKET: optionalStringSchema,
+
+    // MQTT Broker
+    MQTT_BROKER_URL: optionalStringSchema,
+    MQTT_USERNAME: optionalStringSchema,
+    MQTT_PASSWORD: optionalStringSchema,
+    MQTT_CLIENT_ID: optionalStringSchema,
+    MQTT_ENABLED: z.preprocess((v) => {
+      if (v === "true" || v === true || v === "1") return true;
+      if (v === "false" || v === false || v === "0") return false;
+      return undefined;
+    }, z.boolean().optional()),
+  })
+  .transform((data) => ({
+    ...data,
+    MQTT_ENABLED:
+      data.MQTT_ENABLED !== undefined
+        ? data.MQTT_ENABLED
+        : Boolean(data.MQTT_BROKER_URL),
+  }));
 
 export type ServerConfig = z.infer<typeof serverEnvSchema>;
 
@@ -54,6 +73,15 @@ export function getServerConfig(): ServerConfig {
     INFLUXDB_TOKEN: process.env.INFLUXDB_TOKEN || undefined,
     INFLUXDB_ORG: process.env.INFLUXDB_ORG || undefined,
     INFLUXDB_BUCKET: process.env.INFLUXDB_BUCKET || undefined,
+    MQTT_BROKER_URL: process.env.MQTT_BROKER_URL || undefined,
+    MQTT_USERNAME: process.env.MQTT_USERNAME || undefined,
+    MQTT_PASSWORD: process.env.MQTT_PASSWORD || undefined,
+    MQTT_CLIENT_ID: process.env.MQTT_CLIENT_ID || undefined,
+    MQTT_ENABLED:
+      process.env.MQTT_ENABLED !== undefined
+        ? process.env.MQTT_ENABLED === "true" ||
+          process.env.MQTT_ENABLED === "1"
+        : Boolean(process.env.MQTT_BROKER_URL),
   };
 }
 

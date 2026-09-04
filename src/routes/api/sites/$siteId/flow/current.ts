@@ -22,17 +22,21 @@ export const Route = createFileRoute("/api/sites/$siteId/flow/current")({
         }
 
         const latestState = getLatestTelemetry(siteId);
-        const inlet = 45.0;
-        const outlet = latestState?.reading?.flowRate ?? 45.0;
-        const diffPercent = Math.abs(((inlet - outlet) / inlet) * 100);
-        const isLeak = diffPercent > 15.0;
+        const flowRate = latestState?.reading?.flowRate ?? 33.0; // Typical demand; rated 45.0; leak >47.25
+        const nominalFlowRate = 45.0;
+        // Only positive surge over 45.5 L/min represents leakage; lower flow is not a threat
+        const diffPercent =
+          flowRate > nominalFlowRate
+            ? ((flowRate - nominalFlowRate) / nominalFlowRate) * 100
+            : 0.0;
+        const isLeak = flowRate > 47.25; // 5% above rated 45.0 L/min
         const isBlocked = latestState?.safety.waterRelease === "BLOCKED";
 
         return apiSuccess({
-          inlet,
-          outlet,
+          flowRate,
+          nominalFlowRate,
           differencePercent: Number(diffPercent.toFixed(2)),
-          thresholdPercent: 15.0,
+          thresholdPercent: 0.0,
           status: isLeak ? "LEAK_DETECTED" : "NORMAL",
           isolationValve: isBlocked || isLeak ? "CLOSED" : "OPEN",
           lastUpdated: latestState?.updatedAt ?? new Date().toISOString(),

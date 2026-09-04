@@ -50,7 +50,22 @@ async function main() {
     const tempNoise = (Math.random() - 0.5) * 0.4;
     const temperature = Number((diurnalTemp + tempNoise).toFixed(1));
 
-    // Base nominal values
+    // Natural demand-based flow generation: baseline 30–35 L/min (well below 45 L/min rated capacity)
+    // Diurnal demand pattern: higher morning/evening, lower at night
+    const demandHour = pointDate.getHours();
+    const demandCycle =
+      0.4 + 0.6 * Math.abs(Math.sin((demandHour - 3) * (Math.PI / 12)));
+    const baseFlowRate = 30.0 + demandCycle * 5.5; // 30.0 – 35.5 L/min range
+    const flowNoise = (Math.random() - 0.5) * 1.4;
+    let flowRate = Number(
+      Math.max(27.0, Math.min(44.5, baseFlowRate + flowNoise)).toFixed(1),
+    );
+
+    // Occasional high-demand burst (~8% of points) → 38–42 L/min
+    if (Math.random() < 0.08) {
+      flowRate = Number((38.0 + Math.random() * 4.0).toFixed(1));
+    }
+
     let ph = Number((7.35 + (Math.random() - 0.5) * 0.15).toFixed(2));
     let turbidity = Number((1.05 + (Math.random() - 0.5) * 0.25).toFixed(2));
     let heavyMetals = Number((0.002 + Math.random() * 0.001).toFixed(4));
@@ -59,7 +74,6 @@ async function main() {
     );
     let tds = Number((210 + (Math.random() - 0.5) * 20).toFixed(0));
     let electricalConductivity = Number((tds * 1.48).toFixed(0));
-    let flowRate = Number((45.0 + (Math.random() - 0.5) * 0.6).toFixed(1));
     const hardness = Number((138 + (Math.random() - 0.5) * 10).toFixed(0));
     let safetyScore = 100;
     let safetyStatus = "SAFE";
@@ -76,6 +90,7 @@ async function main() {
       heavyMetals = Number((0.002 + peakFactor * 0.0065).toFixed(4)); // Bumps to ~0.0085 ppm
       tds = Number((210 + peakFactor * 175).toFixed(0)); // Rises to ~385 ppm
       electricalConductivity = Number((tds * 1.55).toFixed(0));
+      // Flow stays in normal demand range during AMD – this is a contamination event, not a surge
 
       if (ph < 6.5 || heavyMetals > 0.007) {
         safetyScore = Math.max(35, Math.round(100 - peakFactor * 65));
@@ -90,10 +105,28 @@ async function main() {
       }
     }
 
-    // Episode 2: Transient Differential Hydraulic Pulse (9h to 7.5h ago)
-    if (hoursAgo >= 7.5 && hoursAgo <= 9.0) {
-      const flowDiffFactor = 1 - Math.abs(hoursAgo - 8.25) / 0.75;
-      flowRate = Number((45.0 - flowDiffFactor * 4.2).toFixed(1)); // Drops to ~40.8 L/min (~9.3% difference)
+    // Episode 2: Late-night low-demand trough (38h to 36h ago) → dips to ~25 L/min
+    if (hoursAgo >= 36.0 && hoursAgo <= 38.0) {
+      const troughFactor = 1 - Math.abs(hoursAgo - 37.0) / 1.0;
+      flowRate = Number(
+        (30.0 - troughFactor * 5.5 + (Math.random() - 0.5) * 0.8).toFixed(1),
+      ); // ~24–26 L/min at trough
+    }
+
+    // Episode 3: Pre-dawn low-demand dip (9.5h to 8h ago) → dips to ~25 L/min again
+    if (hoursAgo >= 8.0 && hoursAgo <= 9.5) {
+      const troughFactor = 1 - Math.abs(hoursAgo - 8.75) / 0.75;
+      flowRate = Number(
+        (30.0 - troughFactor * 5.8 + (Math.random() - 0.5) * 0.6).toFixed(1),
+      ); // ~24–25.5 L/min
+    }
+
+    // Episode 4: Morning demand peak (12h to 11h ago) → flow rises to ~40 L/min
+    if (hoursAgo >= 11.0 && hoursAgo <= 12.0) {
+      const peakFactor = 1 - Math.abs(hoursAgo - 11.5) / 0.5;
+      flowRate = Number(
+        (35.0 + peakFactor * 6.0 + (Math.random() - 0.5) * 0.8).toFixed(1),
+      ); // ~39–41 L/min
     }
 
     const point = new Point("water_quality")

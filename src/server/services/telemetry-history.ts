@@ -22,8 +22,7 @@ export interface WaterQualityHistoryPoint {
 
 export interface FlowHistoryPoint {
   timestamp: string;
-  inletFlowRate: number;
-  outletFlowRate: number;
+  flowRate: number;
   differencePercent: number;
 }
 
@@ -258,12 +257,13 @@ export async function getFlowHistory(
 
     const points: Array<FlowHistoryPoint> = rows.map((row) => {
       const flowRate = Number(row.flowRate ?? 45.0);
+      const differencePercent =
+        flowRate > 45.0 ? ((flowRate - 45.0) / 45.0) * 100 : 0.0;
 
       return {
         timestamp: String(row._time ?? new Date().toISOString()),
-        inletFlowRate: 45.0,
-        outletFlowRate: flowRate,
-        differencePercent: Math.abs(((45.0 - flowRate) / 45.0) * 100),
+        flowRate,
+        differencePercent,
       };
     });
 

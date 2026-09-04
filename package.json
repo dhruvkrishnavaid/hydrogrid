@@ -33,6 +33,7 @@
     "@tanstack/react-start": "latest",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "mqtt": "^5.15.2",
     "nitro": "3.0.260610-beta",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

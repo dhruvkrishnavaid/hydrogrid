@@ -1,4 +1,12 @@
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import * as React from "react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,25 +27,35 @@ import type { FlowHistoryPoint } from "../../lib/types";
 
 interface FlowTelemetryDualChartProps {
   history: Array<FlowHistoryPoint>;
-  currentInlet?: number;
-  currentOutlet?: number;
+  currentFlow?: number;
+  nominalFlow?: number;
+  onHoverChange?: (
+    point: {
+      time: string;
+      timestamp: string;
+      flowRate: number;
+      nominalFlowRate: number;
+      difference: number;
+    } | null,
+  ) => void;
   className?: string;
 }
 
 export function FlowTelemetryDualChart({
   history,
-  currentInlet = 45.0,
-  currentOutlet = 45.0,
+  currentFlow = 45.0,
+  nominalFlow = 45.0,
+  onHoverChange,
   className,
 }: FlowTelemetryDualChartProps) {
   const chartConfig = {
-    inlet: {
-      label: "Intake Flow Q₁ (L/min)",
+    flowRate: {
+      label: "Node Zero Flow (L/min)",
       color: "#06b6d4", // Cyan
     },
-    outlet: {
-      label: "Distribution Flow Q₂ (L/min)",
-      color: "#10b981", // Emerald
+    nominalFlow: {
+      label: "Rated Baseline (45.0 L/min)",
+      color: "#f59e0b", // Amber
     },
   } satisfies ChartConfig;
 
@@ -47,46 +65,96 @@ export function FlowTelemetryDualChart({
       hour: "2-digit",
       minute: "2-digit",
     });
+    const flowVal = Number(point.flowRate.toFixed(1));
     return {
       time: timeStr,
       timestamp: point.timestamp,
-      inlet: Number(point.inletFlowRate.toFixed(1)),
-      outlet: Number(point.outletFlowRate.toFixed(1)),
-      difference: Number(
-        Math.abs(point.inletFlowRate - point.outletFlowRate).toFixed(2),
-      ),
+      flowRate: flowVal,
+      nominalFlowRate: nominalFlow,
+      difference: Number(Math.abs(nominalFlow - flowVal).toFixed(2)),
+      differencePercent: Number(point.differencePercent.toFixed(1)),
     };
   });
 
-  const delta = Math.abs(currentInlet - currentOutlet);
+  const [hoveredPoint, setHoveredPoint] = React.useState<{
+    time: string;
+    timestamp: string;
+    flowRate: number;
+    nominalFlowRate: number;
+    difference: number;
+  } | null>(null);
+
+  const lastHoveredRef = React.useRef<string | null>(null);
+
+  const handleHoverSync = React.useCallback(
+    (
+      pt: {
+        time: string;
+        timestamp: string;
+        flowRate: number;
+        nominalFlowRate: number;
+        difference: number;
+      } | null,
+    ) => {
+      const key = pt ? `${pt.time}-${pt.timestamp}` : null;
+      if (lastHoveredRef.current === key) return;
+      lastHoveredRef.current = key;
+      setHoveredPoint(pt);
+      onHoverChange?.(pt);
+    },
+    [onHoverChange],
+  );
+
+  const isHovered = hoveredPoint !== null;
+  const dispFlow = isHovered ? hoveredPoint.flowRate : currentFlow;
+  const dispDelta = isHovered
+    ? hoveredPoint.difference
+    : Math.abs(nominalFlow - currentFlow);
 
   return (
-    <Card className={className}>
+    <Card
+      className={className}
+      onMouseLeave={() => {
+        handleHoverSync(null);
+      }}
+    >
       <CardHeader className="p-4 pb-2 sm:p-5 sm:pb-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
               <span className="size-2 animate-pulse rounded-full bg-cyan-500" />
               <CardTitle className="text-foreground text-sm font-bold">
-                Dual-Turbine Mass-Balance Telemetry Stream
+                Node Zero Hydraulic Flow Telemetry Stream
               </CardTitle>
               <Badge variant="outline" className="text-[10px] font-semibold">
                 L/min
               </Badge>
             </div>
             <CardDescription className="text-xs">
-              Synchronous Hall-effect turbine monitoring: Q₁ (Raw Water Intake)
-              vs Q₂ (Treated Distribution)
+              Continuous turbine monitoring vs 45.0 L/min nominal rated baseline
             </CardDescription>
           </div>
 
           <div className="flex items-center gap-2 text-xs">
-            <div className="border-border/80 bg-muted/40 rounded-lg border px-2.5 py-1 text-right">
-              <span className="text-muted-foreground block text-[9px] font-bold uppercase">
-                Q₁ Intake
+            <div
+              className={`rounded-lg border px-2.5 py-1 text-right transition-colors ${
+                isHovered
+                  ? "border-cyan-500/50 bg-cyan-500/10 ring-1 ring-cyan-500/30"
+                  : "border-border/80 bg-muted/40"
+              }`}
+            >
+              <span className="text-muted-foreground flex items-center justify-end gap-1 text-[9px] font-bold uppercase">
+                {isHovered ? (
+                  <>
+                    <span className="size-1.5 animate-pulse rounded-full bg-cyan-500" />
+                    Measured ({hoveredPoint.time})
+                  </>
+                ) : (
+                  "Node Zero Flow (Q)"
+                )}
               </span>
               <span className="telemetry-val font-black text-cyan-600 dark:text-cyan-400">
-                {currentInlet.toFixed(1)}{" "}
+                {dispFlow.toFixed(1)}{" "}
                 <span className="text-muted-foreground text-[9px] font-normal">
                   L/m
                 </span>
@@ -95,24 +163,36 @@ export function FlowTelemetryDualChart({
 
             <div className="border-border/80 bg-muted/40 rounded-lg border px-2.5 py-1 text-right">
               <span className="text-muted-foreground block text-[9px] font-bold uppercase">
-                Q₂ Distribution
+                Rated Baseline
               </span>
-              <span className="telemetry-val font-black text-emerald-600 dark:text-emerald-400">
-                {currentOutlet.toFixed(1)}{" "}
+              <span className="telemetry-val text-muted-foreground font-bold">
+                {nominalFlow.toFixed(1)}{" "}
                 <span className="text-muted-foreground text-[9px] font-normal">
                   L/m
                 </span>
               </span>
             </div>
 
-            <div className="border-border/80 bg-muted/40 rounded-lg border px-2.5 py-1 text-right">
+            <div
+              className={`rounded-lg border px-2.5 py-1 text-right transition-colors ${
+                isHovered
+                  ? "border-amber-500/50 bg-amber-500/10 ring-1 ring-amber-500/30"
+                  : "border-border/80 bg-muted/40"
+              }`}
+            >
               <span className="text-muted-foreground block text-[9px] font-bold uppercase">
-                Hydraulic Loss
+                {isHovered
+                  ? `Baseline Δ (${hoveredPoint.time})`
+                  : "Baseline Loss (Δ)"}
               </span>
               <span
-                className={`telemetry-val font-black ${delta > 2.0 ? "text-amber-600" : "text-foreground"}`}
+                className={`telemetry-val font-black ${
+                  dispDelta > 6.75
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "text-amber-600 dark:text-amber-400"
+                }`}
               >
-                {delta.toFixed(1)}{" "}
+                {dispDelta.toFixed(1)}{" "}
                 <span className="text-muted-foreground text-[9px] font-normal">
                   L/m
                 </span>
@@ -127,15 +207,35 @@ export function FlowTelemetryDualChart({
           <AreaChart
             data={chartData}
             margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            onMouseMove={(state: any) => {
+              const idx =
+                typeof state?.activeTooltipIndex === "number"
+                  ? state.activeTooltipIndex
+                  : typeof state?.activeIndex === "number"
+                    ? state.activeIndex
+                    : -1;
+              const p =
+                (state?.activePayload && state.activePayload[0]?.payload) ||
+                (idx >= 0 && idx < chartData.length ? chartData[idx] : null);
+
+              if (p) {
+                handleHoverSync({
+                  time: String(p.time),
+                  timestamp: String(p.timestamp),
+                  flowRate: Number(p.flowRate),
+                  nominalFlowRate: Number(p.nominalFlowRate),
+                  difference: Number(p.difference),
+                });
+              }
+            }}
+            onMouseLeave={() => {
+              handleHoverSync(null);
+            }}
           >
             <defs>
-              <linearGradient id="grad-inlet" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="grad-flow" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
                 <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.0} />
-              </linearGradient>
-              <linearGradient id="grad-outlet" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.5} />
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
               </linearGradient>
             </defs>
 
@@ -156,14 +256,14 @@ export function FlowTelemetryDualChart({
               fontSize={10}
               tickLine={false}
               axisLine={false}
-              domain={[35, 55]}
+              domain={[25, 55]}
               tickFormatter={(v) => `${v}`}
             />
             <ChartTooltip
               content={
                 <ChartTooltipContent
                   indicator="dot"
-                  labelFormatter={(_, payload) => {
+                  labelFormatter={(_: any, payload: any) => {
                     const item = payload?.[0]?.payload;
                     return item?.timestamp
                       ? new Date(item.timestamp).toLocaleString()
@@ -173,21 +273,27 @@ export function FlowTelemetryDualChart({
               }
             />
 
+            <ReferenceLine
+              y={45.0}
+              stroke="#f59e0b"
+              strokeDasharray="4 4"
+              strokeWidth={1.5}
+              label={{
+                value: "Rated Design (45.0 L/min)",
+                position: "insideTopRight",
+                fill: "#f59e0b",
+                fontSize: 10,
+                fontWeight: 600,
+              }}
+            />
+
             <Area
               type="monotone"
-              dataKey="inlet"
-              name="Q₁ Intake Flow"
+              dataKey="flowRate"
+              name="Measured Flow (Node Zero)"
               stroke="#06b6d4"
               strokeWidth={2.5}
-              fill="url(#grad-inlet)"
-            />
-            <Area
-              type="monotone"
-              dataKey="outlet"
-              name="Q₂ Distribution Flow"
-              stroke="#10b981"
-              strokeWidth={2.5}
-              fill="url(#grad-outlet)"
+              fill="url(#grad-flow)"
             />
           </AreaChart>
         </ChartContainer>
@@ -197,13 +303,13 @@ export function FlowTelemetryDualChart({
           <div className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-[#06b6d4]" />
             <span className="text-muted-foreground">
-              Q₁ Intake Meter (Raw Inflow)
+              Node Zero Turbine Flow Rate (L/min)
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-[#10b981]" />
+            <span className="h-0.5 w-4 border-t-2 border-dashed border-[#f59e0b]" />
             <span className="text-muted-foreground">
-              Q₂ Distribution Meter (Treated Outflow)
+              Rated Baseline (45.0 L/min)
             </span>
           </div>
         </div>

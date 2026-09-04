@@ -2,12 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { isInfluxDBConfigured } from "../../server/db/influx";
 import { isSupabaseConfigured } from "../../server/db/supabase";
+import { ensureServerInitialized } from "../../server/init";
+import { getMqttStatus } from "../../server/services/mqtt";
 import { apiSuccess } from "../../server/utils/response";
 
 export const Route = createFileRoute("/api/health")({
   server: {
     handlers: {
       GET: () => {
+        ensureServerInitialized();
+        const mqttStatus = getMqttStatus();
+
         return apiSuccess({
           system: "HydroGrid",
           status: "healthy",
@@ -16,6 +21,11 @@ export const Route = createFileRoute("/api/health")({
           services: {
             supabase: isSupabaseConfigured() ? "configured" : "unconfigured",
             influxdb: isInfluxDBConfigured() ? "configured" : "unconfigured",
+            mqtt: mqttStatus.connected
+              ? "connected"
+              : mqttStatus.enabled
+                ? "connecting"
+                : "disabled",
           },
         });
       },

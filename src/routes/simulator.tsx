@@ -96,12 +96,12 @@ function SimulatorPage() {
     {
       name: "LEAK",
       badgeVariant: "destructive",
-      title: "4. 15% Differential Mass-Balance Leak Detection",
+      title: "4. Pipeline Leak Surge Detection (Trip: > 47.25 L/min / 5%)",
       category: "Hydraulics & Actuators",
       description:
-        "Simulates outlet turbine drop to 31.5 L/min (30.0% differential mismatch > 15.0% threshold). Node Zero emergency pipe isolation.",
+        "Simulates pipe breach flow surge to 58.5 L/min (+30.0% above 45.0 L/min rated capacity). Leak trip threshold is >47.25 L/min (5% above rated). Node Zero emergency solenoid isolation.",
       expectedState:
-        "Leak: DETECTED | Gate: FAIL | Solenoid: CLOSED (ISOLATED) | Alert: CRITICAL",
+        "Flow: 58.5 L/min | Surge: +30% | Leak: DETECTED | Gate: FAIL | Solenoid: CLOSED | Alert: CRITICAL",
       prototypeActive: true,
     },
     {

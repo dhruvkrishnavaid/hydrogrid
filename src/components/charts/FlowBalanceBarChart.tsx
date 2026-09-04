@@ -32,13 +32,13 @@ interface FlowBalanceBarChartProps {
 }
 
 const chartConfig = {
-  inletFlowRate: {
-    label: "Intake Flow (F1)",
+  flowRate: {
+    label: "Measured Flow (L/min)",
     color: "#06b6d4", // Electric Cyan
   },
-  outletFlowRate: {
-    label: "Distribution Flow (F2)",
-    color: "#10b981", // Bright Emerald
+  nominalFlowRate: {
+    label: "Rated Baseline (45.0 L/min)",
+    color: "#f59e0b", // Amber
   },
 } satisfies ChartConfig;
 
@@ -58,32 +58,29 @@ export function FlowBalanceBarChart({
         const d = new Date(point.timestamp);
         return {
           time: `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`,
-          inletFlowRate: Number(point.inletFlowRate.toFixed(1)),
-          outletFlowRate: Number(point.outletFlowRate.toFixed(1)),
+          flowRate: Number(point.flowRate.toFixed(1)),
+          nominalFlowRate: 45.0,
           diff: Number(point.differencePercent.toFixed(1)),
         };
       });
     }
 
     // Default 6 sequential flow intervals
-    const baseIn = flow?.inletFlowRate ?? 42.5;
-    const baseOut = flow?.outletFlowRate ?? (isLeak ? 28.0 : 42.5);
+    const baseFlow = flow?.flowRate ?? 45.0;
     const points = [];
     const now = Date.now();
 
     for (let i = 5; i >= 0; i--) {
       const t = new Date(now - i * 90 * 1000);
       const timeStr = `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}`;
-      const noise = i === 0 && isLeak ? -14.5 : Math.sin(i) * 0.4;
-      const outVal = i === 0 && isLeak ? baseOut : baseIn + noise;
-      const diffVal = Number(
-        Math.abs(((baseIn - outVal) / baseIn) * 100).toFixed(1),
-      );
+      const noise = i === 0 && isLeak ? -13.5 : Math.sin(i) * 0.4;
+      const fVal = i === 0 ? baseFlow : 45.0 + noise;
+      const diffVal = Number(Math.abs(((45.0 - fVal) / 45.0) * 100).toFixed(1));
 
       points.push({
         time: timeStr,
-        inletFlowRate: Number(baseIn.toFixed(1)),
-        outletFlowRate: Number(outVal.toFixed(1)),
+        flowRate: Number(fVal.toFixed(1)),
+        nominalFlowRate: 45.0,
         diff: diffVal,
       });
     }
@@ -91,39 +88,76 @@ export function FlowBalanceBarChart({
     return points;
   }, [history, flow, isLeak]);
 
+  const [hoveredPoint, setHoveredPoint] = React.useState<{
+    time: string;
+    flowRate: number;
+    nominalFlowRate: number;
+    diff: number;
+  } | null>(null);
+
+  const lastHoveredRef = React.useRef<string | null>(null);
+
+  const handleHoverSync = React.useCallback(
+    (
+      pt: {
+        time: string;
+        flowRate: number;
+        nominalFlowRate: number;
+        diff: number;
+      } | null,
+    ) => {
+      const key = pt ? pt.time : null;
+      if (lastHoveredRef.current === key) return;
+      lastHoveredRef.current = key;
+      setHoveredPoint(pt);
+    },
+    [],
+  );
+
+  const isHovered = hoveredPoint !== null;
+  const dispDiff = isHovered ? hoveredPoint.diff : currentDiff;
+  const dispFlow = isHovered ? hoveredPoint.flowRate : (flow?.flowRate ?? 45.0);
+  const dispNominal = 45.0;
+  const dispIsLeak = dispDiff >= 15.0;
+
   return (
-    <Card className={className}>
+    <Card
+      className={className}
+      onMouseLeave={() => {
+        handleHoverSync(null);
+      }}
+    >
       <CardHeader className="p-4 pb-2 sm:p-5 sm:pb-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
               <span
                 className={`size-2 rounded-full ${
-                  isLeak
+                  dispIsLeak
                     ? "animate-ping bg-red-500"
                     : "animate-pulse bg-cyan-500"
                 }`}
               />
               <CardTitle className="text-foreground text-sm font-bold">
-                Hydraulic Mass-Balance & Differential Leak Detection
+                Hydraulic Flow Rate vs Rated Baseline
               </CardTitle>
             </div>
             <CardDescription className="text-xs">
-              Continuous dual Hall-effect turbine differential monitoring ($F_1$
-              vs $F_2$) with automated 15.0% trip isolation
+              Continuous baseline differential monitoring (Node Zero vs 45.0
+              L/min rated design) with automated 15.0% trip isolation
             </CardDescription>
           </div>
 
           <Badge
             variant="outline"
             className={
-              isLeak
+              dispIsLeak
                 ? "border-red-500/40 bg-red-500/10 font-bold text-red-700 dark:text-red-400"
                 : "border-cyan-500/40 bg-cyan-500/10 font-semibold text-cyan-700 dark:text-cyan-400"
             }
           >
-            {isLeak
-              ? "⚠ PIPELINE LEAK DETECTED"
+            {dispIsLeak
+              ? "⚠ PIPELINE FLOW DROP DETECTED"
               : "✔ HYDRAULIC INTEGRITY INTACT"}
           </Badge>
         </div>
@@ -131,18 +165,35 @@ export function FlowBalanceBarChart({
 
       <CardContent className="space-y-4 p-4 pt-2 sm:p-5 sm:pt-2">
         {/* Differential Discrepancy Meter */}
-        <div className="border-border/70 bg-muted/30 rounded-xl border p-3">
+        <div
+          className={`rounded-xl border p-3 transition-colors ${
+            isHovered
+              ? "border-[var(--brand-secondary)]/50 bg-[var(--brand-secondary)]/5 ring-1 ring-[var(--brand-secondary)]/30"
+              : "border-border/70 bg-muted/30"
+          }`}
+        >
           <div className="flex items-center justify-between text-xs">
-            <span className="text-foreground font-semibold">
-              Current Differential Mismatch:
+            <span className="text-foreground flex items-center gap-1.5 font-semibold">
+              {isHovered ? (
+                <>
+                  <span className="size-1.5 animate-pulse rounded-full bg-cyan-500" />
+                  Baseline Mismatch ({hoveredPoint.time}):
+                </>
+              ) : (
+                "Current Baseline Mismatch:"
+              )}
             </span>
             <div className="flex items-center gap-2">
               <span
-                className={`text-sm font-extrabold ${
-                  isLeak ? "text-red-600 dark:text-red-400" : "text-foreground"
+                className={`telemetry-val text-sm font-extrabold ${
+                  dispIsLeak
+                    ? "text-red-600 dark:text-red-400"
+                    : dispDiff >= 6.0
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-emerald-600 dark:text-emerald-400"
                 }`}
               >
-                {currentDiff.toFixed(1)}%
+                {dispDiff.toFixed(1)}%
               </span>
               <span className="text-muted-foreground text-[10px]">
                 / 15.0% Trip Threshold
@@ -150,39 +201,68 @@ export function FlowBalanceBarChart({
             </div>
           </div>
           <Progress
-            value={Math.min(100, (currentDiff / 15.0) * 100)}
+            value={Math.min(100, (dispDiff / 15.0) * 100)}
             className="mt-2 h-2.5 w-full"
             indicatorClassName={
-              isLeak
+              dispIsLeak
                 ? "bg-red-500"
-                : currentDiff > 8.0
+                : dispDiff > 8.0
                   ? "bg-amber-500"
                   : "bg-cyan-500"
             }
           />
         </div>
 
-        {/* Bar Chart comparing F1 vs F2 */}
+        {/* Bar Chart comparing Flow vs Rated Baseline */}
         <ChartContainer config={chartConfig} className="h-48 w-full">
           <BarChart
             data={chartData}
-            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            margin={{ top: 12, right: 12, left: -20, bottom: 0 }}
+            barGap={4}
+            barCategoryGap="25%"
+            onMouseMove={(state: any) => {
+              const idx =
+                typeof state?.activeTooltipIndex === "number"
+                  ? state.activeTooltipIndex
+                  : typeof state?.activeIndex === "number"
+                    ? state.activeIndex
+                    : -1;
+              const p =
+                (state?.activePayload && state.activePayload[0]?.payload) ||
+                (idx >= 0 && idx < chartData.length ? chartData[idx] : null);
+
+              if (p) {
+                handleHoverSync({
+                  time: String(p.time),
+                  flowRate: Number(p.flowRate),
+                  nominalFlowRate: Number(p.nominalFlowRate ?? 45.0),
+                  diff: Number(p.diff),
+                });
+              }
+            }}
+            onMouseLeave={() => {
+              handleHoverSync(null);
+            }}
           >
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
-              className="stroke-border/60"
+              className="stroke-border/40"
             />
             <XAxis
               dataKey="time"
+              stroke="#888888"
+              fontSize={10}
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              className="fill-muted-foreground text-[11px] font-medium"
             />
             <YAxis
+              stroke="#888888"
+              fontSize={10}
               tickLine={false}
               axisLine={false}
+              domain={[0, 60]}
               tickMargin={8}
               className="fill-muted-foreground text-[11px] font-medium"
             />
@@ -191,15 +271,15 @@ export function FlowBalanceBarChart({
             <ReferenceLine y={0} stroke="var(--border)" />
 
             <Bar
-              dataKey="inletFlowRate"
-              name="Intake F1 (L/min)"
+              dataKey="flowRate"
+              name="Measured Flow (Node Zero)"
               fill="#06b6d4"
               radius={[4, 4, 0, 0]}
             />
             <Bar
-              dataKey="outletFlowRate"
-              name="Distribution F2 (L/min)"
-              fill={isLeak ? "#ef4444" : "#10b981"}
+              dataKey="nominalFlowRate"
+              name="Rated Baseline (45.0 L/min)"
+              fill="#f59e0b"
               radius={[4, 4, 0, 0]}
             />
           </BarChart>
@@ -209,23 +289,19 @@ export function FlowBalanceBarChart({
         <div className="border-border/60 grid grid-cols-3 gap-2 border-t pt-3 text-center text-xs">
           <div className="bg-muted/40 rounded-lg p-2">
             <span className="text-muted-foreground block text-[10px] font-bold uppercase">
-              Intake Flow F1
+              {isHovered ? `Measured (${hoveredPoint.time})` : "Measured Flow"}
             </span>
-            <span className="text-foreground text-xs font-extrabold text-[#06b6d4]">
-              {(flow?.inletFlowRate ?? 42.5).toFixed(1)} L/min
+            <span className="telemetry-val text-xs font-extrabold text-[#06b6d4]">
+              {dispFlow.toFixed(1)} L/min
             </span>
           </div>
 
           <div className="bg-muted/40 rounded-lg p-2">
             <span className="text-muted-foreground block text-[10px] font-bold uppercase">
-              Distribution F2
+              Rated Baseline
             </span>
-            <span
-              className={`text-xs font-extrabold ${
-                isLeak ? "text-red-500" : "text-[#10b981]"
-              }`}
-            >
-              {(flow?.outletFlowRate ?? 42.5).toFixed(1)} L/min
+            <span className="telemetry-val text-xs font-extrabold text-[#f59e0b]">
+              {dispNominal.toFixed(1)} L/min
             </span>
           </div>
 
@@ -234,13 +310,13 @@ export function FlowBalanceBarChart({
               Isolation Valve
             </span>
             <span
-              className={`text-xs font-extrabold ${
-                (flow?.valveStatus ?? "OPEN") === "OPEN"
+              className={`telemetry-val text-xs font-extrabold ${
+                !dispIsLeak
                   ? "text-emerald-600 dark:text-emerald-400"
                   : "text-amber-600 dark:text-amber-400"
               }`}
             >
-              {flow?.valveStatus ?? "OPEN"}
+              {dispIsLeak ? "CLOSED" : (flow?.valveStatus ?? "OPEN")}
             </span>
           </div>
         </div>

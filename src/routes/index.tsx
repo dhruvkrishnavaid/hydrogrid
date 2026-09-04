@@ -87,6 +87,7 @@ function DashboardSkeleton() {
 
 function DashboardPage() {
   const {
+    token,
     activeSiteId,
     sites,
     role,
@@ -105,6 +106,56 @@ function DashboardPage() {
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
   const [isTelemetryExpanded, setIsTelemetryExpanded] = useState<boolean>(true);
 
+  const [hoveredTemp, setHoveredTemp] = useState<{
+    value: number;
+    time?: string;
+  } | null>(null);
+  const [hoveredTurb, setHoveredTurb] = useState<{
+    value: number;
+    time?: string;
+  } | null>(null);
+  const [hoveredInlet, setHoveredInlet] = useState<{
+    value: number;
+    time?: string;
+  } | null>(null);
+  const [hoveredMismatch, setHoveredMismatch] = useState<{
+    value: number;
+    time?: string;
+  } | null>(null);
+  const [hoveredPh, setHoveredPh] = useState<{
+    value: number;
+    time?: string;
+  } | null>(null);
+  const [hoveredTds, setHoveredTds] = useState<{
+    value: number;
+    time?: string;
+  } | null>(null);
+
+  const handleHoverTemp = useCallback(
+    (pt: { value: number; time?: string } | null) => setHoveredTemp(pt),
+    [],
+  );
+  const handleHoverTurb = useCallback(
+    (pt: { value: number; time?: string } | null) => setHoveredTurb(pt),
+    [],
+  );
+  const handleHoverInlet = useCallback(
+    (pt: { value: number; time?: string } | null) => setHoveredInlet(pt),
+    [],
+  );
+  const handleHoverMismatch = useCallback(
+    (pt: { value: number; time?: string } | null) => setHoveredMismatch(pt),
+    [],
+  );
+  const handleHoverPh = useCallback(
+    (pt: { value: number; time?: string } | null) => setHoveredPh(pt),
+    [],
+  );
+  const handleHoverTds = useCallback(
+    (pt: { value: number; time?: string } | null) => setHoveredTds(pt),
+    [],
+  );
+
   const fetchOverview = useCallback(async () => {
     if (!activeSiteId) {
       setIsLoadingData(false);
@@ -112,7 +163,6 @@ function DashboardPage() {
     }
 
     try {
-      setError(null);
       const [overview, wq, fl] = await Promise.all([
         api.getDashboardOverview(activeSiteId),
         api
@@ -123,8 +173,16 @@ function DashboardPage() {
       setData(overview);
       setWqHistory(wq);
       setFlowHistory(fl);
+      setError(null);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load telemetry");
+      setData((current) => {
+        if (!current) {
+          setError(
+            err instanceof Error ? err.message : "Failed to load telemetry",
+          );
+        }
+        return current;
+      });
     } finally {
       setIsLoadingData(false);
     }
@@ -139,10 +197,132 @@ function DashboardPage() {
     }
   }, [activeSiteId, fetchOverview, isAuthLoading, isAuthenticating]);
 
-  // Reactive SSE update listener
+  // Reactive SSE update listener with immediate optimistic state update + server reconciliation
   useSSE({
     siteId: activeSiteId,
-    onEvent: () => {
+    token,
+    onEvent: (type: string, eventData: any) => {
+      // 1. Instant local state updates
+      if (type === "water-quality.updated" && eventData?.reading) {
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            latestReading: eventData.reading,
+            lastUpdated: new Date().toISOString(),
+          };
+        });
+        setWqHistory((prev) => {
+          const newPoint: WaterQualityHistoryPoint = {
+            timestamp: new Date().toISOString(),
+            ...eventData.reading,
+          };
+          return [...prev.slice(-29), newPoint];
+        });
+      } else if (type === "water-safety.updated" && eventData?.safety) {
+        setData((prev) => {
+          if (!prev) return prev;
+          const isBlocked = eventData.safety.waterRelease === "BLOCKED";
+          return {
+            ...prev,
+            safety: eventData.safety,
+            flow: {
+              ...prev.flow,
+              valveStatus: isBlocked ? "CLOSED" : prev.flow.valveStatus,
+            },
+            lastUpdated: new Date().toISOString(),
+          };
+        });
+      } else if (type === "quality-gate.changed" && eventData) {
+        setData((prev) => {
+          if (!prev) return prev;
+          const isBlocked = eventData.waterRelease === "BLOCKED";
+          return {
+            ...prev,
+            safety: {
+              ...prev.safety,
+              qualityGate: eventData.qualityGate ?? prev.safety.qualityGate,
+              waterRelease: eventData.waterRelease ?? prev.safety.waterRelease,
+            },
+            flow: {
+              ...prev.flow,
+              valveStatus: isBlocked ? "CLOSED" : prev.flow.valveStatus,
+            },
+            lastUpdated: new Date().toISOString(),
+          };
+        });
+      } else if (type === "flow.updated" && eventData?.flow) {
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            flow: {
+              flowRate: eventData.flow.flowRate ?? prev.flow.flowRate,
+              nominalFlowRate:
+                eventData.flow.nominalFlowRate ??
+                prev.flow.nominalFlowRate ??
+                45.0,
+              mismatchPercent:
+                eventData.flow.mismatchPercent ?? prev.flow.mismatchPercent,
+              leakStatus: eventData.flow.leakStatus ?? prev.flow.leakStatus,
+              valveStatus: eventData.flow.valveStatus ?? prev.flow.valveStatus,
+            },
+            lastUpdated: new Date().toISOString(),
+          };
+        });
+        setFlowHistory((prev) => {
+          const newPoint: FlowHistoryPoint = {
+            timestamp: new Date().toISOString(),
+            flowRate: eventData.flow.flowRate ?? 33.0,
+            differencePercent: eventData.flow.mismatchPercent ?? 0.0,
+          };
+          return [...prev.slice(-29), newPoint];
+        });
+      } else if (type === "leak.detected") {
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            flow: {
+              ...prev.flow,
+              mismatchPercent: eventData?.mismatchPercent ?? 30.0,
+              leakStatus: "LEAK_DETECTED",
+              valveStatus: "CLOSED",
+            },
+            lastUpdated: new Date().toISOString(),
+          };
+        });
+      } else if (type === "alert.created" && eventData?.alert) {
+        setData((prev) => {
+          if (!prev) return prev;
+          const exists = prev.activeAlerts.some(
+            (a) => a.id === eventData.alert.id,
+          );
+          const activeAlerts = exists
+            ? prev.activeAlerts.map((a) =>
+                a.id === eventData.alert.id ? eventData.alert : a,
+              )
+            : [eventData.alert, ...prev.activeAlerts];
+          return {
+            ...prev,
+            activeAlerts,
+            lastUpdated: new Date().toISOString(),
+          };
+        });
+      } else if (type === "alert.acknowledged" && eventData?.alertId) {
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            activeAlerts: prev.activeAlerts.filter(
+              (a) => a.id !== eventData.alertId,
+            ),
+            lastUpdated: new Date().toISOString(),
+          };
+        });
+      }
+
+      // 2. Authoritative server reconciliation
       fetchOverview();
     },
   });
@@ -475,298 +655,467 @@ function DashboardPage() {
 
       {/* 2.5 At-A-Glance Critical KPI Sparkline Cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {FEATURES.ALL_SENSORS ? (
-          /* pH Potability Card (Full suite) */
-          <Card className="border-border/80 overflow-hidden shadow-2xs">
-            <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
-              <div>
-                <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-                  pH Potability Level
-                </CardDescription>
-                <div className="mt-0.5 flex items-baseline gap-2">
-                  <span className="telemetry-val text-foreground text-xl font-black">
-                    {latestReading.ph.toFixed(2)}
-                  </span>
-                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    {latestReading.ph >= 6.5 && latestReading.ph <= 8.5
-                      ? "✓ Optimal"
-                      : "⚠ Outside Band"}
-                  </span>
-                </div>
-              </div>
-              <Badge
-                variant="outline"
-                className="border-emerald-500/30 bg-emerald-500/10 text-[10px] font-bold text-emerald-700 dark:text-emerald-400"
-              >
-                6.5–8.5
-              </Badge>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <TelemetrySparkline
-                data={
-                  wqHistory.length
-                    ? wqHistory.map((p) => ({ value: p.ph }))
-                    : [
-                        { value: 7.3 },
-                        { value: 7.35 },
-                        { value: 7.32 },
-                        { value: latestReading.ph },
-                      ]
-                }
-                color="#10b981"
-                gradientId="spark-ph"
-                height={36}
-              />
-            </CardContent>
-          </Card>
-        ) : (
-          /* Water Temperature Card (Node Zero Prototype) */
-          <Card className="border-border/80 overflow-hidden shadow-2xs">
-            <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
-              <div>
-                <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-                  Water Temperature
-                </CardDescription>
-                <div className="mt-0.5 flex items-baseline gap-2">
-                  <span className="telemetry-val text-foreground text-xl font-black">
-                    {latestReading.temperature.toFixed(1)}{" "}
-                    <span className="text-muted-foreground text-xs font-semibold">
-                      °C
-                    </span>
-                  </span>
-                  <span className="text-[11px] font-semibold text-orange-600 dark:text-orange-400">
-                    {latestReading.temperature >= 15 &&
-                    latestReading.temperature <= 35
-                      ? "✓ Ambient Potable"
-                      : "⚠ Thermal Drift"}
-                  </span>
-                </div>
-              </div>
-              <Badge
-                variant="outline"
-                className="border-orange-500/30 bg-orange-500/10 text-[10px] font-bold text-orange-700 dark:text-orange-400"
-              >
-                15–35 °C
-              </Badge>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <TelemetrySparkline
-                data={
-                  wqHistory.length
-                    ? wqHistory.map((p) => ({ value: p.temperature }))
-                    : [
-                        { value: 23.5 },
-                        { value: 24.0 },
-                        { value: 24.2 },
-                        { value: latestReading.temperature },
-                      ]
-                }
-                color="#f97316"
-                gradientId="spark-temp"
-                height={36}
-              />
-            </CardContent>
-          </Card>
-        )}
+        {FEATURES.ALL_SENSORS
+          ? /* pH Potability Card (Full suite) */
+            (() => {
+              const isHovered = hoveredPh !== null;
+              const val = isHovered ? hoveredPh.value : latestReading.ph;
+              const isOptimal = val >= 6.5 && val <= 8.5;
+              return (
+                <Card
+                  className="border-border/80 overflow-hidden shadow-2xs"
+                  onMouseLeave={() => handleHoverPh(null)}
+                >
+                  <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                          pH Potability Level
+                        </CardDescription>
+                        {isHovered && (
+                          <span className="text-muted-foreground text-[10px] font-semibold">
+                            ({hoveredPh.time})
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-0.5 flex items-baseline gap-2">
+                        <span className="telemetry-val text-foreground text-xl font-black">
+                          {val.toFixed(2)}
+                        </span>
+                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          {isOptimal ? "✓ Optimal" : "⚠ Outside Band"}
+                        </span>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/30 bg-emerald-500/10 text-[10px] font-bold text-emerald-700 dark:text-emerald-400"
+                    >
+                      6.5–8.5
+                    </Badge>
+                  </CardHeader>
+                  <CardContent className="p-3 pt-0">
+                    <TelemetrySparkline
+                      data={
+                        wqHistory.length
+                          ? wqHistory.map((p) => {
+                              const d = new Date(p.timestamp);
+                              return {
+                                value: p.ph,
+                                time: d.toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }),
+                                timestamp: p.timestamp,
+                              };
+                            })
+                          : [
+                              { value: 7.3, time: "11:30" },
+                              { value: 7.35, time: "11:32" },
+                              { value: 7.32, time: "11:34" },
+                              { value: latestReading.ph, time: "11:35" },
+                            ]
+                      }
+                      color="#10b981"
+                      gradientId="spark-ph"
+                      unit=""
+                      onHoverChange={handleHoverPh}
+                      height={36}
+                    />
+                  </CardContent>
+                </Card>
+              );
+            })()
+          : /* Water Temperature Card (Node Zero Prototype) */
+            (() => {
+              const isHovered = hoveredTemp !== null;
+              const val = isHovered
+                ? hoveredTemp.value
+                : latestReading.temperature;
+              const isAmbient = val >= 15 && val <= 35;
+              return (
+                <Card
+                  className="border-border/80 overflow-hidden shadow-2xs"
+                  onMouseLeave={() => handleHoverTemp(null)}
+                >
+                  <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                          Water Temperature
+                        </CardDescription>
+                        {isHovered && (
+                          <span className="text-muted-foreground text-[10px] font-semibold">
+                            ({hoveredTemp.time})
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-0.5 flex items-baseline gap-2">
+                        <span className="telemetry-val text-foreground text-xl font-black">
+                          {val.toFixed(1)}{" "}
+                          <span className="text-muted-foreground text-xs font-semibold">
+                            °C
+                          </span>
+                        </span>
+                        <span className="text-[11px] font-semibold text-orange-600 dark:text-orange-400">
+                          {isAmbient ? "✓ Ambient Potable" : "⚠ Thermal Drift"}
+                        </span>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="border-orange-500/30 bg-orange-500/10 text-[10px] font-bold text-orange-700 dark:text-orange-400"
+                    >
+                      15–35 °C
+                    </Badge>
+                  </CardHeader>
+                  <CardContent className="p-3 pt-0">
+                    <TelemetrySparkline
+                      data={
+                        wqHistory.length
+                          ? wqHistory.map((p) => {
+                              const d = new Date(p.timestamp);
+                              return {
+                                value: p.temperature,
+                                time: d.toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }),
+                                timestamp: p.timestamp,
+                              };
+                            })
+                          : [
+                              { value: 23.5, time: "11:30" },
+                              { value: 24.0, time: "11:32" },
+                              { value: 24.2, time: "11:34" },
+                              {
+                                value: latestReading.temperature,
+                                time: "11:35",
+                              },
+                            ]
+                      }
+                      color="#f97316"
+                      gradientId="spark-temp"
+                      unit="°C"
+                      onHoverChange={handleHoverTemp}
+                      height={36}
+                    />
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
         {/* Optical Turbidity Card (Active in both full & prototype) */}
-        <Card className="border-border/80 overflow-hidden shadow-2xs">
-          <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
-            <div>
-              <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-                Optical Turbidity
-              </CardDescription>
-              <div className="mt-0.5 flex items-baseline gap-2">
-                <span className="telemetry-val text-foreground text-xl font-black">
-                  {latestReading.turbidity.toFixed(2)}{" "}
-                  <span className="text-muted-foreground text-xs font-semibold">
-                    NTU
-                  </span>
-                </span>
-                <span className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400">
-                  {latestReading.turbidity < 5.0 ? "✓ Clear" : "⚠ High Silt"}
-                </span>
-              </div>
-            </div>
-            <Badge
-              variant="outline"
-              className="border-cyan-500/30 bg-cyan-500/10 text-[10px] font-bold text-cyan-700 dark:text-cyan-400"
+        {(() => {
+          const isHovered = hoveredTurb !== null;
+          const val = isHovered ? hoveredTurb.value : latestReading.turbidity;
+          const isClear = val < 5.0;
+          return (
+            <Card
+              className="border-border/80 overflow-hidden shadow-2xs"
+              onMouseLeave={() => handleHoverTurb(null)}
             >
-              &lt; 5.0 NTU
-            </Badge>
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <TelemetrySparkline
-              data={
-                wqHistory.length
-                  ? wqHistory.map((p) => ({ value: p.turbidity }))
-                  : [
-                      { value: 1.1 },
-                      { value: 0.9 },
-                      { value: 0.85 },
-                      { value: latestReading.turbidity },
-                    ]
-              }
-              color="#06b6d4"
-              gradientId="spark-turb"
-              height={36}
-            />
-          </CardContent>
-        </Card>
+              <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                      Optical Turbidity
+                    </CardDescription>
+                    {isHovered && (
+                      <span className="text-muted-foreground text-[10px] font-semibold">
+                        ({hoveredTurb.time})
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-0.5 flex items-baseline gap-2">
+                    <span className="telemetry-val text-foreground text-xl font-black">
+                      {val.toFixed(2)}{" "}
+                      <span className="text-muted-foreground text-xs font-semibold">
+                        NTU
+                      </span>
+                    </span>
+                    <span className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400">
+                      {isClear ? "✓ Clear" : "⚠ High Silt"}
+                    </span>
+                  </div>
+                </div>
+                <Badge
+                  variant="outline"
+                  className="border-cyan-500/30 bg-cyan-500/10 text-[10px] font-bold text-cyan-700 dark:text-cyan-400"
+                >
+                  &lt; 5.0 NTU
+                </Badge>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <TelemetrySparkline
+                  data={
+                    wqHistory.length
+                      ? wqHistory.map((p) => {
+                          const d = new Date(p.timestamp);
+                          return {
+                            value: p.turbidity,
+                            time: d.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }),
+                            timestamp: p.timestamp,
+                          };
+                        })
+                      : [
+                          { value: 1.1, time: "11:30" },
+                          { value: 0.9, time: "11:32" },
+                          { value: 0.85, time: "11:34" },
+                          { value: latestReading.turbidity, time: "11:35" },
+                        ]
+                  }
+                  color="#06b6d4"
+                  gradientId="spark-turb"
+                  unit="NTU"
+                  onHoverChange={handleHoverTurb}
+                  height={36}
+                />
+              </CardContent>
+            </Card>
+          );
+        })()}
 
-        {FEATURES.ALL_SENSORS ? (
-          /* Total Dissolved Solids Card (Full suite) */
-          <Card className="border-border/80 overflow-hidden shadow-2xs">
-            <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
-              <div>
-                <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-                  Mineral TDS Load
-                </CardDescription>
-                <div className="mt-0.5 flex items-baseline gap-2">
-                  <span className="telemetry-val text-foreground text-xl font-black">
-                    {Math.round(latestReading.tds)}{" "}
-                    <span className="text-muted-foreground text-xs font-semibold">
-                      ppm
-                    </span>
-                  </span>
-                  <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                    {latestReading.tds < 500 ? "✓ Safe Load" : "⚠ High Solids"}
-                  </span>
-                </div>
-              </div>
-              <Badge
-                variant="outline"
-                className="border-amber-500/30 bg-amber-500/10 text-[10px] font-bold text-amber-700 dark:text-amber-400"
-              >
-                &lt; 500 ppm
-              </Badge>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <TelemetrySparkline
-                data={
-                  wqHistory.length
-                    ? wqHistory.map((p) => ({ value: p.tds }))
-                    : [
-                        { value: 150 },
-                        { value: 145 },
-                        { value: 148 },
-                        { value: latestReading.tds },
-                      ]
-                }
-                color="#f59e0b"
-                gradientId="spark-tds"
-                height={36}
-              />
-            </CardContent>
-          </Card>
-        ) : (
-          /* Intake Flow Rate Card (Node Zero Prototype) */
-          <Card className="border-border/80 overflow-hidden shadow-2xs">
-            <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
-              <div>
-                <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-                  Intake Flow Rate (Q₁)
-                </CardDescription>
-                <div className="mt-0.5 flex items-baseline gap-2">
-                  <span className="telemetry-val text-foreground text-xl font-black">
-                    {flow.inletFlowRate.toFixed(1)}{" "}
-                    <span className="text-muted-foreground text-xs font-semibold">
-                      L/min
-                    </span>
-                  </span>
-                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    ✓ Turbine Active
-                  </span>
-                </div>
-              </div>
-              <Badge
-                variant="outline"
-                className="border-emerald-500/30 bg-emerald-500/10 text-[10px] font-bold text-emerald-700 dark:text-emerald-400"
-              >
-                30–50 L/min
-              </Badge>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <TelemetrySparkline
-                data={
-                  flowHistory.length
-                    ? flowHistory.map((p) => ({ value: p.inletFlowRate }))
-                    : [
-                        { value: 44.5 },
-                        { value: 45.0 },
-                        { value: 45.2 },
-                        { value: flow.inletFlowRate },
-                      ]
-                }
-                color="#10b981"
-                gradientId="spark-inlet-flow"
-                height={36}
-              />
-            </CardContent>
-          </Card>
-        )}
+        {FEATURES.ALL_SENSORS
+          ? /* Total Dissolved Solids Card (Full suite) */
+            (() => {
+              const isHovered = hoveredTds !== null;
+              const val = isHovered ? hoveredTds.value : latestReading.tds;
+              const isSafe = val < 500;
+              return (
+                <Card
+                  className="border-border/80 overflow-hidden shadow-2xs"
+                  onMouseLeave={() => handleHoverTds(null)}
+                >
+                  <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                          Mineral TDS Load
+                        </CardDescription>
+                        {isHovered && (
+                          <span className="text-muted-foreground text-[10px] font-semibold">
+                            ({hoveredTds.time})
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-0.5 flex items-baseline gap-2">
+                        <span className="telemetry-val text-foreground text-xl font-black">
+                          {Math.round(val)}{" "}
+                          <span className="text-muted-foreground text-xs font-semibold">
+                            ppm
+                          </span>
+                        </span>
+                        <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                          {isSafe ? "✓ Safe Load" : "⚠ High Solids"}
+                        </span>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="border-amber-500/30 bg-amber-500/10 text-[10px] font-bold text-amber-700 dark:text-amber-400"
+                    >
+                      &lt; 500 ppm
+                    </Badge>
+                  </CardHeader>
+                  <CardContent className="p-3 pt-0">
+                    <TelemetrySparkline
+                      data={
+                        wqHistory.length
+                          ? wqHistory.map((p) => {
+                              const d = new Date(p.timestamp);
+                              return {
+                                value: p.tds,
+                                time: d.toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }),
+                                timestamp: p.timestamp,
+                              };
+                            })
+                          : [
+                              { value: 150, time: "11:30" },
+                              { value: 145, time: "11:32" },
+                              { value: 148, time: "11:34" },
+                              { value: latestReading.tds, time: "11:35" },
+                            ]
+                      }
+                      color="#f59e0b"
+                      gradientId="spark-tds"
+                      unit="ppm"
+                      onHoverChange={handleHoverTds}
+                      height={36}
+                    />
+                  </CardContent>
+                </Card>
+              );
+            })()
+          : /* Node Zero Flow Rate Card (Single Transducer) */
+            (() => {
+              const isHovered = hoveredInlet !== null;
+              const val = isHovered ? hoveredInlet.value : flow.flowRate;
+              return (
+                <Card
+                  className="border-border/80 overflow-hidden shadow-2xs"
+                  onMouseLeave={() => handleHoverInlet(null)}
+                >
+                  <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                          Node Zero Flow Rate
+                        </CardDescription>
+                        {isHovered && (
+                          <span className="text-muted-foreground text-[10px] font-semibold">
+                            ({hoveredInlet.time})
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-0.5 flex items-baseline gap-2">
+                        <span className="telemetry-val text-foreground text-xl font-black">
+                          {val.toFixed(1)}{" "}
+                          <span className="text-muted-foreground text-xs font-semibold">
+                            L/min
+                          </span>
+                        </span>
+                        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          ✓ Node Zero Active
+                        </span>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/30 bg-emerald-500/10 text-[10px] font-bold text-emerald-700 dark:text-emerald-400"
+                    >
+                      30–50 L/min
+                    </Badge>
+                  </CardHeader>
+                  <CardContent className="p-3 pt-0">
+                    <TelemetrySparkline
+                      data={
+                        flowHistory.length
+                          ? flowHistory.map((p) => {
+                              const d = new Date(p.timestamp);
+                              return {
+                                value: p.flowRate,
+                                time: d.toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }),
+                                timestamp: p.timestamp,
+                              };
+                            })
+                          : [
+                              { value: 31.5, time: "11:30" },
+                              { value: 33.0, time: "11:32" },
+                              { value: 34.2, time: "11:34" },
+                              { value: flow.flowRate, time: "11:35" },
+                            ]
+                      }
+                      color="#10b981"
+                      gradientId="spark-inlet-flow"
+                      unit="L/min"
+                      onHoverChange={handleHoverInlet}
+                      height={36}
+                    />
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
         {/* Differential Flow Mismatch & Shutoff Valve Card */}
-        <Card className="border-border/80 overflow-hidden shadow-2xs">
-          <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
-            <div>
-              <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-                {FEATURES.ALL_SENSORS
-                  ? "Differential Flow Mismatch"
-                  : "Leak Detection & Solenoid Valve"}
-              </CardDescription>
-              <div className="mt-0.5 flex items-baseline gap-2">
-                <span
-                  className={`telemetry-val text-xl font-black ${
-                    isLeak
-                      ? "text-rose-600 dark:text-rose-400"
-                      : "text-foreground"
-                  }`}
-                >
-                  {flow.mismatchPercent.toFixed(1)}%
-                </span>
-                <span
-                  className={`text-[11px] font-semibold ${
-                    isLeak
-                      ? "font-bold text-rose-600 dark:text-rose-400"
-                      : "text-emerald-600 dark:text-emerald-400"
-                  }`}
-                >
-                  {isLeak
-                    ? "⚠ Leak (Valve Closed)"
-                    : `✓ Valve ${flow.valveStatus}`}
-                </span>
-              </div>
-            </div>
-            <Badge
-              variant="outline"
-              className={`text-[10px] font-bold ${
-                isLeak
-                  ? "border-red-500/30 bg-red-500/10 text-red-700"
-                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-              }`}
+        {(() => {
+          const isHovered = hoveredMismatch !== null;
+          const val = isHovered ? hoveredMismatch.value : flow.mismatchPercent;
+          const cardLeak = flow.flowRate > 47.25 || val > 5.0 || isLeak;
+          return (
+            <Card
+              className="border-border/80 overflow-hidden shadow-2xs"
+              onMouseLeave={() => handleHoverMismatch(null)}
             >
-              Trip: 15.0%
-            </Badge>
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <TelemetrySparkline
-              data={
-                flowHistory.length
-                  ? flowHistory.map((p) => ({ value: p.differencePercent }))
-                  : [
-                      { value: 0 },
-                      { value: 0.1 },
-                      { value: 0 },
-                      { value: flow.mismatchPercent },
-                    ]
-              }
-              color={isLeak ? "#ef4444" : "#10b981"}
-              gradientId="spark-flow"
-              height={36}
-            />
-          </CardContent>
-        </Card>
+              <CardHeader className="flex flex-row items-center justify-between p-3 pb-1">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <CardDescription className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                      {FEATURES.ALL_SENSORS
+                        ? "Differential Flow Mismatch"
+                        : "Leak Detection & Solenoid Valve"}
+                    </CardDescription>
+                    {isHovered && (
+                      <span className="text-muted-foreground text-[10px] font-semibold">
+                        ({hoveredMismatch.time})
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-0.5 flex items-baseline gap-2">
+                    <span
+                      className={`telemetry-val text-xl font-black ${
+                        cardLeak
+                          ? "text-rose-600 dark:text-rose-400"
+                          : "text-foreground"
+                      }`}
+                    >
+                      {val > 0 ? `+${val.toFixed(1)}%` : "0.0%"}
+                    </span>
+                    <span
+                      className={`text-[11px] font-semibold ${
+                        cardLeak
+                          ? "font-bold text-rose-600 dark:text-rose-400"
+                          : "text-emerald-600 dark:text-emerald-400"
+                      }`}
+                    >
+                      {cardLeak
+                        ? "⚠ Leak (Valve Closed)"
+                        : `✓ Valve ${flow.valveStatus}`}
+                    </span>
+                  </div>
+                </div>
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] font-bold ${
+                    cardLeak
+                      ? "border-red-500/30 bg-red-500/10 text-red-700"
+                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                  }`}
+                >
+                  Limit: 47.25 L/min
+                </Badge>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <TelemetrySparkline
+                  data={
+                    flowHistory.length
+                      ? flowHistory.map((p) => {
+                          const d = new Date(p.timestamp);
+                          return {
+                            value: p.differencePercent,
+                            time: d.toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }),
+                            timestamp: p.timestamp,
+                          };
+                        })
+                      : [
+                          { value: 0, time: "11:30" },
+                          { value: 0.1, time: "11:32" },
+                          { value: 0, time: "11:34" },
+                          { value: flow.mismatchPercent, time: "11:35" },
+                        ]
+                  }
+                  color={cardLeak ? "#ef4444" : "#10b981"}
+                  gradientId="spark-flow"
+                  unit="%"
+                  onHoverChange={handleHoverMismatch}
+                  height={36}
+                />
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
 
       {/* 2.6 Primary Real-Time Visual Analytics Section (shadcn Charts) */}
@@ -1096,7 +1445,7 @@ function DashboardPage() {
               </Badge>
             </div>
             <CardDescription className="text-xs">
-              Dual-sensor mass-balance monitoring with automated pipeline
+              Node Zero baseline differential monitoring with automated pipeline
               isolation valve.
             </CardDescription>
           </CardHeader>
@@ -1105,7 +1454,7 @@ function DashboardPage() {
               <span>
                 Flow{" "}
                 <strong className="telemetry-val text-foreground">
-                  {flow.inletFlowRate.toFixed(1)} L/min
+                  {flow.flowRate.toFixed(1)} L/min
                 </strong>
               </span>{" "}
               ·{" "}

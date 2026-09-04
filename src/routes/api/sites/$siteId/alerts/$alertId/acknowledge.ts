@@ -10,6 +10,7 @@ import {
   acknowledgeAlert,
   getAlertById,
 } from "../../../../../../server/repositories/alerts";
+import { broadcastSiteEvent } from "../../../../../../server/services";
 import { apiError, apiSuccess } from "../../../../../../server/utils/response";
 
 export const Route = createFileRoute(
@@ -57,6 +58,14 @@ export const Route = createFileRoute(
         if (!updated) {
           return apiError("INTERNAL_ERROR", "Failed to acknowledge alert", 500);
         }
+
+        broadcastSiteEvent(siteId, "alert.created", { siteId, alert: updated });
+        broadcastSiteEvent(siteId, "alert.acknowledged", {
+          siteId,
+          alertId,
+          acknowledgedBy: user.id,
+          timestamp: new Date().toISOString(),
+        });
 
         return apiSuccess({ alert: updated });
       },

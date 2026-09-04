@@ -30,13 +30,14 @@ import type {
   WaterQualityHistoryPoint,
   WaterQualityReading,
 } from "../lib/types";
+import { useSSE } from "../lib/use-sse";
 
 export const Route = createFileRoute("/water-quality")({
   component: WaterQualityPage,
 });
 
 function WaterQualityPage() {
-  const { activeSiteId } = useAuth();
+  const { activeSiteId, token } = useAuth();
   const [currentReading, setCurrentReading] =
     useState<WaterQualityReading | null>(null);
   const [history, setHistory] = useState<Array<WaterQualityHistoryPoint>>([]);
@@ -45,6 +46,16 @@ function WaterQualityPage() {
   );
   const [interval, setInterval] = useState<string>("5m");
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useSSE({
+    siteId: activeSiteId,
+    token,
+    onEvent: (type, eventData: any) => {
+      if (type === "water-quality.updated" && eventData?.reading) {
+        setCurrentReading(eventData.reading);
+      }
+    },
+  });
 
   useEffect(() => {
     const siteId = activeSiteId ?? "00000000-0000-0000-0000-000000000001";
@@ -165,14 +176,30 @@ function WaterQualityPage() {
     Object.keys(paramConfig) as Array<keyof WaterQualityReading>
   ).filter((key) => isSensorKeyEnabled(key));
 
+  const [hoveredPoint, setHoveredPoint] = useState<{
+    value: number;
+    timestamp: string;
+    timeStr: string;
+  } | null>(null);
+
+  useEffect(() => {
+    setHoveredPoint(null);
+  }, [selectedParam]);
+
   const selectedMeta = paramConfig[selectedParam];
-  const selectedValue = currentReading ? currentReading[selectedParam] : null;
+  const isHovered = hoveredPoint !== null;
+  const displayedValue = isHovered
+    ? hoveredPoint.value
+    : currentReading
+      ? currentReading[selectedParam]
+      : null;
+
   const isSelectedOutOfRange =
-    selectedValue !== null &&
+    displayedValue !== null &&
     ((selectedMeta.safeMin !== undefined &&
-      selectedValue < selectedMeta.safeMin) ||
+      displayedValue < selectedMeta.safeMin) ||
       (selectedMeta.safeMax !== undefined &&
-        selectedValue > selectedMeta.safeMax));
+        displayedValue > selectedMeta.safeMax));
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
@@ -232,10 +259,18 @@ function WaterQualityPage() {
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-center">
             {/* Selected Parameter Details */}
             <div className="space-y-3 lg:col-span-4">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-foreground text-lg font-bold">
                   {selectedMeta.label}
                 </h2>
+                {isHovered && (
+                  <Badge
+                    variant="outline"
+                    className="animate-pulse border-[var(--brand-secondary)]/50 bg-[var(--brand-secondary)]/10 text-[10px] font-bold text-[var(--brand-secondary)]"
+                  >
+                    ● Point {hoveredPoint.timeStr}
+                  </Badge>
+                )}
                 <Badge
                   variant={isSelectedOutOfRange ? "destructive" : "default"}
                   className={
@@ -249,8 +284,12 @@ function WaterQualityPage() {
               </div>
 
               <div className="flex items-baseline gap-2">
-                <span className="telemetry-val text-foreground text-5xl font-black">
-                  {selectedValue !== null ? selectedValue.toFixed(2) : "–"}
+                <span className="telemetry-val text-foreground text-5xl font-black transition-all">
+                  {displayedValue !== null
+                    ? displayedValue.toFixed(
+                        selectedParam === "heavyMetals" ? 4 : 2,
+                      )
+                    : "–"}
                 </span>
                 <span className="text-muted-foreground text-base font-semibold">
                   {selectedMeta.unit}
@@ -291,7 +330,10 @@ function WaterQualityPage() {
                   history={history}
                   selectedParam={selectedParam}
                   paramMeta={selectedMeta}
-                  currentValue={selectedValue ?? undefined}
+                  currentValue={
+                    currentReading ? currentReading[selectedParam] : undefined
+                  }
+                  onHoverChange={setHoveredPoint}
                   className="border-border/80 bg-muted/20 shadow-2xs"
                 />
               )}

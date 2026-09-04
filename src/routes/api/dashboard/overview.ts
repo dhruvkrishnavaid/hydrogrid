@@ -24,7 +24,7 @@ const DEFAULT_SAFE_READING: WaterQualityReading = {
   tds: 210.0,
   electricalConductivity: 340.0,
   temperature: 24.0,
-  flowRate: 45.0,
+  flowRate: 33.0, // Typical operating demand; rated capacity 45.0 L/min; leak >47.25 L/min
   hardness: 140.0,
 };
 
@@ -83,6 +83,20 @@ export const Route = createFileRoute("/api/dashboard/overview")({
         const isBlocked = safety.waterRelease === "BLOCKED";
         const purification = getPurificationStatus(siteId, isBlocked);
 
+        const nominalFlowRate = 45.0;
+        const currentFlowRate = latestReading.flowRate;
+        // Surge above 45 L/min is assumed leakage; lower flow is not a threat
+        const calculatedDiff = Number(
+          (currentFlowRate > nominalFlowRate
+            ? ((currentFlowRate - nominalFlowRate) / nominalFlowRate) * 100
+            : 0
+          ).toFixed(1),
+        );
+        const mismatchPercent =
+          cachedState?.flowMismatchPercent ?? calculatedDiff;
+        const isLeak = currentFlowRate > 47.25 || mismatchPercent > 5.0; // 5% above rated 45.0 L/min
+        const isValveClosed = isBlocked || isLeak;
+
         return apiSuccess({
           site,
           systemStatus: site.status,
@@ -97,11 +111,11 @@ export const Route = createFileRoute("/api/dashboard/overview")({
             lastUpdated: purification.lastUpdated,
           },
           flow: {
-            inletFlowRate: 45.0,
-            outletFlowRate: latestReading.flowRate,
-            mismatchPercent: 0,
-            leakStatus: "NORMAL",
-            valveStatus: isBlocked ? "CLOSED" : "OPEN",
+            flowRate: currentFlowRate,
+            nominalFlowRate,
+            mismatchPercent,
+            leakStatus: isLeak ? "LEAK_DETECTED" : "NORMAL",
+            valveStatus: isValveClosed ? "CLOSED" : "OPEN",
           },
           activeAlerts: alerts,
           recentEvents: events,

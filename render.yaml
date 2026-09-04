@@ -40,7 +40,7 @@ services:
 
       # MQTT Broker Configuration (Optional)
       - key: MQTT_ENABLED
-        value: "false"
+        value: "true"
       - key: MQTT_BROKER_URL
         sync: false
       - key: MQTT_USERNAME

@@ -22,17 +22,24 @@ export const Route = createFileRoute("/api/sites/$siteId/leaks/current")({
         }
 
         const latestState = getLatestTelemetry(siteId);
-        const inlet = 45.0;
-        const outlet = latestState?.reading?.flowRate ?? 45.0;
-        const diffPercent = Math.abs(((inlet - outlet) / inlet) * 100);
-        const isLeak = diffPercent > 15.0;
+        const flowRate = latestState?.reading?.flowRate ?? 33.0;
+        const thresholdRate = 45.0 * 1.05; // 47.25 L/min (+5%)
+        const rawDifference = thresholdRate - flowRate;
+        const isLeak = rawDifference < 0; // flowRate > 47.25
+        const invertedDifference = Number(
+          (flowRate - thresholdRate).toFixed(1),
+        );
         const isBlocked = latestState?.safety.waterRelease === "BLOCKED";
 
         return apiSuccess({
           siteId,
           status: isLeak ? "LEAK_DETECTED" : "NORMAL",
-          differencePercent: Number(diffPercent.toFixed(2)),
-          thresholdPercent: 15.0,
+          flowRate,
+          thresholdRate,
+          differencePercent: invertedDifference,
+          differenceLpm: invertedDifference,
+          marginLpm: Number(rawDifference.toFixed(1)),
+          thresholdPercent: 5.0,
           isolationValve: isBlocked || isLeak ? "CLOSED" : "OPEN",
           lastChecked: latestState?.updatedAt ?? new Date().toISOString(),
         });

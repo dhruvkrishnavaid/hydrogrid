@@ -47,9 +47,9 @@ export function FlowBalanceBarChart({
   history = [],
   className,
 }: FlowBalanceBarChartProps) {
-  const currentDiff =
-    flow?.mismatchPercent ?? (flow as any)?.differencePercent ?? 0.0;
-  const isLeak = flow?.leakStatus === "LEAK_DETECTED" || currentDiff >= 15.0;
+  const currentDiff = Number(((flow?.flowRate ?? 33.0) - 47.25).toFixed(1));
+  const isLeak =
+    flow?.leakStatus === "LEAK_DETECTED" || (flow?.flowRate ?? 33.0) > 47.25;
 
   // Prepare recent comparison samples
   const chartData = React.useMemo(() => {
@@ -60,13 +60,13 @@ export function FlowBalanceBarChart({
           time: `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`,
           flowRate: Number(point.flowRate.toFixed(1)),
           nominalFlowRate: 45.0,
-          diff: Number(point.differencePercent.toFixed(1)),
+          diff: Number((point.flowRate - 47.25).toFixed(1)),
         };
       });
     }
 
     // Default 6 sequential flow intervals
-    const baseFlow = flow?.flowRate ?? 45.0;
+    const baseFlow = flow?.flowRate ?? 33.0;
     const points = [];
     const now = Date.now();
 
@@ -116,9 +116,9 @@ export function FlowBalanceBarChart({
 
   const isHovered = hoveredPoint !== null;
   const dispDiff = isHovered ? hoveredPoint.diff : currentDiff;
-  const dispFlow = isHovered ? hoveredPoint.flowRate : (flow?.flowRate ?? 45.0);
+  const dispFlow = isHovered ? hoveredPoint.flowRate : (flow?.flowRate ?? 33.0);
   const dispNominal = 45.0;
-  const dispIsLeak = dispDiff >= 15.0;
+  const dispIsLeak = dispDiff >= 5.0;
 
   return (
     <Card
@@ -144,7 +144,7 @@ export function FlowBalanceBarChart({
             </div>
             <CardDescription className="text-xs">
               Continuous baseline differential monitoring (Node Zero vs 45.0
-              L/min rated design) with automated 15.0% trip isolation
+              L/min rated design) with automated 5.0% trip isolation
             </CardDescription>
           </div>
 
@@ -188,7 +188,7 @@ export function FlowBalanceBarChart({
                 className={`telemetry-val text-sm font-extrabold ${
                   dispIsLeak
                     ? "text-red-600 dark:text-red-400"
-                    : dispDiff >= 6.0
+                    : dispDiff >= 3.0
                       ? "text-amber-600 dark:text-amber-400"
                       : "text-emerald-600 dark:text-emerald-400"
                 }`}
@@ -196,17 +196,17 @@ export function FlowBalanceBarChart({
                 {dispDiff.toFixed(1)}%
               </span>
               <span className="text-muted-foreground text-[10px]">
-                / 15.0% Trip Threshold
+                / 5.0% Trip Threshold
               </span>
             </div>
           </div>
           <Progress
-            value={Math.min(100, (dispDiff / 15.0) * 100)}
+            value={Math.min(100, (dispDiff / 5.0) * 100)}
             className="mt-2 h-2.5 w-full"
             indicatorClassName={
               dispIsLeak
                 ? "bg-red-500"
-                : dispDiff > 8.0
+                : dispDiff > 3.0
                   ? "bg-amber-500"
                   : "bg-cyan-500"
             }

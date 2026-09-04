@@ -79,10 +79,10 @@ function FlowPage() {
     onEvent: (type, eventData: any) => {
       if (type === "flow.updated" && eventData?.flow) {
         setFlowCurrent({
-          flowRate: eventData.flow.flowRate ?? 45.0,
+          flowRate: eventData.flow.flowRate ?? 33.0,
           nominalFlowRate: 45.0,
           differencePercent: eventData.flow.mismatchPercent ?? 0.0,
-          thresholdPercent: 15.0,
+          thresholdPercent: 5.0,
           status: eventData.flow.leakStatus ?? "NORMAL",
           isolationValve: eventData.flow.valveStatus ?? "OPEN",
         });
@@ -110,11 +110,15 @@ function FlowPage() {
       api.getFlowHistory(siteId, { interval }),
     ])
       .then(([curr, hist]) => {
+        const lastHist = hist && hist.length > 0 ? hist[hist.length - 1] : null;
         setFlowCurrent({
-          flowRate: curr.flowRate ?? 33.0,
+          flowRate: lastHist?.flowRate ?? curr.flowRate ?? 33.0,
           nominalFlowRate: 45.0,
           differencePercent:
-            curr.differencePercent ?? curr.mismatchPercent ?? 0.0,
+            lastHist?.differencePercent ??
+            curr.differencePercent ??
+            curr.mismatchPercent ??
+            0.0,
           thresholdPercent: curr.thresholdPercent ?? 5.0,
           status: curr.leakStatus ?? "NORMAL",
           isolationValve: curr.isolationValve ?? curr.valveStatus ?? "OPEN",
@@ -214,16 +218,20 @@ function FlowPage() {
         <CardContent className="p-6 pt-0">
           {(() => {
             const isHovered = hoveredFlowPoint !== null;
+            const lastHist =
+              history.length > 0 ? history[history.length - 1] : null;
             const activeFlow = isHovered
               ? hoveredFlowPoint.flowRate
-              : (flowCurrent?.flowRate ?? 33.0);
+              : (lastHist?.flowRate ?? flowCurrent?.flowRate ?? 33.0);
             const activeDiff = isHovered
               ? hoveredFlowPoint.difference
-              : (flowCurrent?.differencePercent ?? 0.0);
+              : lastHist
+                ? Number((lastHist.flowRate - 47.25).toFixed(1))
+                : Number((activeFlow - 47.25).toFixed(1));
             const effectiveIsLeak =
               (!isHovered && flowCurrent?.status === "LEAK_DETECTED") ||
               activeFlow > 47.25 ||
-              activeDiff > 5.0;
+              activeDiff > 0.0;
 
             return (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -304,13 +312,17 @@ function FlowPage() {
                         className={`telemetry-val text-4xl font-black ${
                           effectiveIsLeak
                             ? "font-black text-rose-600 dark:text-rose-400"
-                            : "text-emerald-700 dark:text-emerald-400"
+                            : activeDiff >= -3.0
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-emerald-700 dark:text-emerald-400"
                         }`}
                       >
-                        {activeDiff.toFixed(1)}%
+                        {activeDiff > 0
+                          ? `+${activeDiff.toFixed(1)}`
+                          : activeDiff.toFixed(1)}
                       </span>
-                      <span className="text-muted-foreground text-xs">
-                        Surge
+                      <span className="text-muted-foreground text-xs font-bold">
+                        L/min (± Scale)
                       </span>
                     </div>
 
@@ -325,9 +337,8 @@ function FlowPage() {
                     </div>
 
                     <p className="text-muted-foreground mt-2 text-xs">
-                      Leak trips at &gt;47.25 L/min (5% above rated 45.0 L/min).
-                      Typical demand is 30–35 L/min — lower flow is never a
-                      threat.
+                      Flow subtracted from 45×1.05 (47.25 L/min). Negative =
+                      flow &lt; threshold (normal). Positive = leakage trip.
                     </p>
                   </CardContent>
                 </Card>
@@ -439,8 +450,10 @@ function FlowPage() {
                   <TableHead className="w-[180px]">
                     Measured Flow Rate
                   </TableHead>
-                  <TableHead className="w-[180px]">Rated Baseline</TableHead>
-                  <TableHead>Differential Mismatch</TableHead>
+                  <TableHead className="w-[180px]">
+                    Trip Threshold (5%)
+                  </TableHead>
+                  <TableHead>Differential (± Scale)</TableHead>
                   <TableHead className="w-[140px] text-right">
                     Integrity State
                   </TableHead>
@@ -448,8 +461,9 @@ function FlowPage() {
               </TableHeader>
               <TableBody>
                 {history.slice(0, 10).map((h, i) => {
-                  const sampleLeak = h.differencePercent > 15.0;
-                  const sampleWarning = h.differencePercent > 6.0;
+                  const diff = Number((h.flowRate - 47.25).toFixed(1));
+                  const sampleLeak = diff > 0.0;
+                  const sampleWarning = diff >= -3.0 && diff <= 0.0;
 
                   return (
                     <TableRow key={i} className="hover:bg-muted/30">
@@ -469,7 +483,7 @@ function FlowPage() {
                       <TableCell>
                         <div className="flex items-baseline gap-1">
                           <span className="telemetry-val text-sm font-black text-amber-600 dark:text-amber-400">
-                            45.0
+                            47.25
                           </span>
                           <span className="text-muted-foreground text-xs font-medium">
                             L/min
@@ -486,7 +500,8 @@ function FlowPage() {
                                 : "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
                           }`}
                         >
-                          {h.differencePercent.toFixed(1)}%
+                          {diff > 0 ? `+${diff.toFixed(1)}` : diff.toFixed(1)}{" "}
+                          L/min
                         </span>
                       </TableCell>
                       <TableCell className="text-right">

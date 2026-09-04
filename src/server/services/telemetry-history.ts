@@ -159,6 +159,7 @@ export async function getWaterQualityHistory(
           r.site_id == "${siteId}" and
           contains(value: r._field, set: [${numericFields}])
       )
+      |> group(columns: ["_field"])
       |> aggregateWindow(
         every: ${interval},
         fn: mean,
@@ -185,7 +186,7 @@ export async function getWaterQualityHistory(
       tds: Number(row.tds ?? 200.0),
       electricalConductivity: Number(row.electricalConductivity ?? 300.0),
       temperature: Number(row.temperature ?? 24.0),
-      flowRate: Number(row.flowRate ?? 45.0),
+      flowRate: Number(row.flowRate ?? 33.0),
       hardness: Number(row.hardness ?? 140.0),
     }));
 
@@ -238,6 +239,7 @@ export async function getFlowHistory(
           r.site_id == "${siteId}" and
           contains(value: r._field, set: [${numericFields}])
       )
+      |> group(columns: ["_field"])
       |> aggregateWindow(
         every: ${interval},
         fn: mean,
@@ -256,14 +258,19 @@ export async function getFlowHistory(
     const rows = await queryApi.collectRows<Record<string, unknown>>(fluxQuery);
 
     const points: Array<FlowHistoryPoint> = rows.map((row) => {
-      const flowRate = Number(row.flowRate ?? 45.0);
-      const differencePercent =
-        flowRate > 45.0 ? ((flowRate - 45.0) / 45.0) * 100 : 0.0;
+      const flowRate = Number(row.flowRate ?? 33.0);
+      // Mathematical approach:
+      // Subtract flow rate from 45x1.05 (+5% threshold = 47.25 L/min).
+      // rawDifference = (45.0 * 1.05) - flowRate = 47.25 - flowRate
+      // If rawDifference < 0 -> leakage!
+      // If rawDifference >= 0 -> flow < threshold, do nothing.
+      // Inverted for +- reading scale on the graph: flowRate - 47.25
+      const invertedDifference = Number((flowRate - 47.25).toFixed(1));
 
       return {
         timestamp: String(row._time ?? new Date().toISOString()),
         flowRate,
-        differencePercent,
+        differencePercent: invertedDifference,
       };
     });
 
@@ -273,4 +280,18 @@ export async function getFlowHistory(
 
     return { data: [] };
   }
+}
+
+/**
+ * Retrieves the single most recent flow rate reading from InfluxDB time-series.
+ * Always matches the last point in the flow history time series.
+ */
+export async function getLatestFlowPoint(
+  siteId: string,
+): Promise<FlowHistoryPoint | null> {
+  const history = await getFlowHistory(siteId, { interval: "5m" });
+  if (history.data && history.data.length > 0) {
+    return history.data[history.data.length - 1];
+  }
+  return null;
 }

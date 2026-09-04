@@ -6,6 +6,7 @@ import {
   getInfluxWriteApi,
   isInfluxDBConfigured,
 } from "../src/server/db/influx";
+import { evaluateWaterSafety } from "../src/server/services/water-safety";
 
 async function main() {
   console.log("🌊 HydroGrid InfluxDB Historical Seeder Starting...");
@@ -28,9 +29,11 @@ async function main() {
   }
 
   const siteId = "00000000-0000-0000-0000-000000000001";
-  const now = Date.now();
-  const totalHours = 48;
   const intervalMinutes = 5;
+  const now =
+    Math.floor(Date.now() / (intervalMinutes * 60 * 1000)) *
+    (intervalMinutes * 60 * 1000);
+  const totalHours = 48;
   const totalPoints = (totalHours * 60) / intervalMinutes; // 576 points
 
   console.log(
@@ -75,11 +78,6 @@ async function main() {
     let tds = Number((210 + (Math.random() - 0.5) * 20).toFixed(0));
     let electricalConductivity = Number((tds * 1.48).toFixed(0));
     const hardness = Number((138 + (Math.random() - 0.5) * 10).toFixed(0));
-    let safetyScore = 100;
-    let safetyStatus = "SAFE";
-    let qualityGate = "PASS";
-    let waterRelease = "ALLOWED";
-
     // Episode 1: Acid Mine Drainage (AMD) Influx & Automated Neutralization (18h to 15h ago)
     if (hoursAgo >= 15.0 && hoursAgo <= 18.0) {
       const peakFactor = 1 - Math.abs(hoursAgo - 16.5) / 1.5; // 0 to 1 peak at 16.5h ago
@@ -91,18 +89,6 @@ async function main() {
       tds = Number((210 + peakFactor * 175).toFixed(0)); // Rises to ~385 ppm
       electricalConductivity = Number((tds * 1.55).toFixed(0));
       // Flow stays in normal demand range during AMD – this is a contamination event, not a surge
-
-      if (ph < 6.5 || heavyMetals > 0.007) {
-        safetyScore = Math.max(35, Math.round(100 - peakFactor * 65));
-        safetyStatus = "CRITICAL";
-        qualityGate = "FAIL";
-        waterRelease = "BLOCKED";
-      } else {
-        safetyScore = 78;
-        safetyStatus = "WARNING";
-        qualityGate = "PASS";
-        waterRelease = "ALLOWED";
-      }
     }
 
     // Episode 2: Late-night low-demand trough (38h to 36h ago) → dips to ~25 L/min
@@ -129,9 +115,23 @@ async function main() {
       ); // ~39–41 L/min
     }
 
+    const reading = {
+      ph,
+      turbidity,
+      heavyMetals,
+      dissolvedOxygen,
+      tds,
+      electricalConductivity,
+      temperature,
+      flowRate,
+      hardness,
+    };
+
+    const safety = evaluateWaterSafety(reading);
+
     const point = new Point("water_quality")
       .tag("site_id", siteId)
-      .tag("device_id", "node-esp32-edge-01")
+      .tag("device_id", "00000000-0000-0000-0000-000000000101")
       .floatField("ph", ph)
       .floatField("turbidity", turbidity)
       .floatField("heavyMetals", heavyMetals)
@@ -141,10 +141,10 @@ async function main() {
       .floatField("temperature", temperature)
       .floatField("flowRate", flowRate)
       .floatField("hardness", hardness)
-      .intField("safety_score", safetyScore)
-      .stringField("safety_status", safetyStatus)
-      .stringField("quality_gate", qualityGate)
-      .stringField("water_release", waterRelease)
+      .intField("safety_score", safety.score)
+      .stringField("safety_status", safety.status)
+      .stringField("quality_gate", safety.qualityGate)
+      .stringField("water_release", safety.waterRelease)
       .timestamp(pointDate);
 
     points.push(point);

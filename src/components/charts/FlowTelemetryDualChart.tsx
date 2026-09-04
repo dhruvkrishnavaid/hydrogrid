@@ -43,7 +43,7 @@ interface FlowTelemetryDualChartProps {
 
 export function FlowTelemetryDualChart({
   history,
-  currentFlow = 45.0,
+  currentFlow = 33.0,
   nominalFlow = 45.0,
   onHoverChange,
   className,
@@ -106,10 +106,12 @@ export function FlowTelemetryDualChart({
   );
 
   const isHovered = hoveredPoint !== null;
-  const dispFlow = isHovered ? hoveredPoint.flowRate : currentFlow;
+  const latestHistFlow =
+    history.length > 0 ? history[history.length - 1].flowRate : currentFlow;
+  const dispFlow = isHovered ? hoveredPoint.flowRate : latestHistFlow;
   const dispDelta = isHovered
     ? hoveredPoint.difference
-    : Math.abs(nominalFlow - currentFlow);
+    : Math.abs(nominalFlow - dispFlow);
 
   return (
     <Card
@@ -245,18 +247,25 @@ export function FlowTelemetryDualChart({
               className="stroke-border/50"
             />
             <XAxis
-              dataKey="time"
+              dataKey="timestamp"
               stroke="#888888"
               fontSize={10}
               tickLine={false}
               axisLine={false}
+              tickFormatter={(iso) => {
+                const d = new Date(iso);
+                return d.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+              }}
             />
             <YAxis
               stroke="#888888"
               fontSize={10}
               tickLine={false}
               axisLine={false}
-              domain={[25, 55]}
+              domain={[20, 55]}
               tickFormatter={(v) => `${v}`}
             />
             <ChartTooltip

@@ -74,8 +74,8 @@ export function FlowDifferentialChart({
   );
 
   const chartConfig = {
-    mismatch: {
-      label: "Mismatch Differential (%)",
+    difference: {
+      label: "Differential from Threshold (± L/min)",
       color: "#10b981",
     },
   } satisfies ChartConfig;
@@ -86,20 +86,32 @@ export function FlowDifferentialChart({
       hour: "2-digit",
       minute: "2-digit",
     });
-    const val = Number(point.differencePercent.toFixed(1));
+    // Mathematical approach directly from flow rate:
+    // Trip threshold: 45.0 * 1.05 = 47.25 L/min (+5%)
+    // Difference from threshold = 47.25 - flowRate (<0 = leakage, >0 = flow < threshold)
+    // Inverted for +- reading scale on the graph: flowRate - 47.25
+    const invertedDiff = Number((point.flowRate - 47.25).toFixed(1));
+    const isLeakPoint = invertedDiff > 0;
+    const isNearLimit = invertedDiff >= -3.0 && invertedDiff <= 0;
+
     return {
       time: timeStr,
       timestamp: point.timestamp,
       flowRate: Number(point.flowRate.toFixed(1)),
-      difference: val,
-      mismatch: val,
-      color: val >= 15.0 ? "#ef4444" : val >= 6.0 ? "#f59e0b" : "#10b981",
+      difference: invertedDiff,
+      mismatch: invertedDiff,
+      color: isLeakPoint ? "#ef4444" : isNearLimit ? "#f59e0b" : "#10b981",
     };
   });
 
   const isHovered = hoveredPoint !== null;
-  const dispMismatch = isHovered ? hoveredPoint.mismatch : _currentMismatch;
-  const dispIsLeak = dispMismatch >= 15.0 || isLeak;
+  const latestHistPoint =
+    history.length > 0 ? history[history.length - 1] : null;
+  const latestHistDiff = latestHistPoint
+    ? Number((latestHistPoint.flowRate - 47.25).toFixed(1))
+    : _currentMismatch;
+  const dispMismatch = isHovered ? hoveredPoint.mismatch : latestHistDiff;
+  const dispIsLeak = dispMismatch > 0.0 || isLeak;
 
   return (
     <Card
@@ -124,8 +136,9 @@ export function FlowDifferentialChart({
               </CardTitle>
             </div>
             <CardDescription className="text-xs">
-              Surge calculation: Flow &gt; 45.0 L/min assumed leak condition
-              (Lower flow is not a leak threat)
+              Mathematical differential: Flow subtracted from 45.0×1.05 (47.25
+              L/min). Inverted ± scale (Negative = safe margin, Positive =
+              leakage).
             </CardDescription>
           </div>
 
@@ -141,22 +154,25 @@ export function FlowDifferentialChart({
                 {isHovered ? (
                   <>
                     <span className="size-1.5 animate-pulse rounded-full bg-amber-500" />
-                    Mismatch ({hoveredPoint.time})
+                    Diff ({hoveredPoint.time})
                   </>
                 ) : (
-                  "Current Mismatch"
+                  "Differential (± Scale)"
                 )}
               </span>
               <span
                 className={`telemetry-val font-black ${
-                  dispMismatch >= 15.0
+                  dispMismatch > 0.0
                     ? "text-red-600 dark:text-red-400"
-                    : dispMismatch >= 6.0
+                    : dispMismatch >= -3.0
                       ? "text-amber-600 dark:text-amber-400"
                       : "text-emerald-600 dark:text-emerald-400"
                 }`}
               >
-                {dispMismatch.toFixed(1)}%
+                {dispMismatch > 0
+                  ? `+${dispMismatch.toFixed(1)}`
+                  : dispMismatch.toFixed(1)}{" "}
+                L/min
               </span>
             </div>
 
@@ -169,8 +185,8 @@ export function FlowDifferentialChart({
               }
             >
               {dispIsLeak
-                ? "⚠ PIPELINE BREACH DETECTED"
-                : "✓ INTEGRITY INTACT (< 15.0%)"}
+                ? `⚠ PIPELINE BREACH (+${dispMismatch.toFixed(1)} L/min)`
+                : `✓ INTEGRITY INTACT (${dispMismatch.toFixed(1)} L/min)`}
             </Badge>
           </div>
         </div>
@@ -180,7 +196,7 @@ export function FlowDifferentialChart({
         <ChartContainer config={chartConfig} className="h-64 w-full">
           <BarChart
             data={chartData}
-            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            margin={{ top: 10, right: 10, left: 8, bottom: 0 }}
             onMouseMove={(state: any) => {
               const idx =
                 typeof state?.activeTooltipIndex === "number"
@@ -211,19 +227,28 @@ export function FlowDifferentialChart({
               className="stroke-border/50"
             />
             <XAxis
-              dataKey="time"
+              dataKey="timestamp"
               stroke="#888888"
               fontSize={10}
               tickLine={false}
               axisLine={false}
+              tickFormatter={(iso) => {
+                const d = new Date(iso);
+                return d.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+              }}
             />
             <YAxis
               stroke="#888888"
               fontSize={10}
               tickLine={false}
               axisLine={false}
-              domain={[0, 20]}
-              tickFormatter={(v) => `${v}%`}
+              width={54}
+              domain={[-25, 10]}
+              ticks={[-25, -20, -15, -10, -5, 0, 5, 10]}
+              tickFormatter={(v) => `${v > 0 ? `+${v}` : v} L/m`}
             />
             <ChartTooltip
               content={
@@ -232,16 +257,17 @@ export function FlowDifferentialChart({
                   formatter={(val: any, _: any, item: any) => (
                     <div className="space-y-1">
                       <div className="flex items-center justify-between gap-4 font-bold">
-                        <span>Differential Mismatch:</span>
+                        <span>Differential (±):</span>
                         <span
                           className="telemetry-val"
                           style={{ color: item?.payload?.color }}
                         >
-                          {val}%
+                          {Number(val) > 0 ? `+${val}` : val} L/min
                         </span>
                       </div>
                       <div className="text-muted-foreground text-[10px]">
-                        Safe Threshold: &lt; 15.0%
+                        Flow: {item?.payload?.flowRate} L/min | Trip Limit:
+                        47.25 L/min (45.0 + 5%)
                       </div>
                     </div>
                   )}
@@ -249,18 +275,18 @@ export function FlowDifferentialChart({
               }
             />
             <ReferenceLine
-              y={15.0}
+              y={0}
               stroke="#ef4444"
               strokeDasharray="4 4"
               strokeWidth={2}
               label={{
-                value: "15.0% Emergency Trip Threshold",
+                value: "0.0 L/min Trip Threshold (47.25 L/min)",
                 fill: "#ef4444",
                 fontSize: 10,
                 position: "insideTopLeft",
               }}
             />
-            <Bar dataKey="mismatch" radius={[4, 4, 0, 0]}>
+            <Bar dataKey="difference" radius={[2, 2, 2, 2]} minPointSize={2}>
               {chartData.map((entry, index) => (
                 <Cell key={`bar-${index}`} fill={entry.color} />
               ))}
@@ -273,19 +299,19 @@ export function FlowDifferentialChart({
           <div className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-[#10b981]" />
             <span className="text-muted-foreground">
-              Nominal Flow (&lt; 6.0%)
+              Nominal Flow (&lt; -3.0 L/min Margin)
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-[#f59e0b]" />
             <span className="text-muted-foreground">
-              Hydraulic Drift (6.0% – 15.0%)
+              Hydraulic Drift (-3.0 to 0.0 L/min Margin)
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-full bg-[#ef4444]" />
             <span className="text-muted-foreground font-bold text-rose-600 dark:text-rose-400">
-              Trip Lockdown (&gt; 15.0%)
+              Trip Lockdown (&gt; 0.0 L/min Surge Breach)
             </span>
           </div>
         </div>

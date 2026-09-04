@@ -1,0 +1,51 @@
+services:
+  - type: web
+    name: hydrogrid
+    runtime: node
+    plan: free
+    buildCommand: bun install && bun run build
+    startCommand: bun run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BUN_VERSION
+        value: 1.4.0
+
+      # Supabase Infrastructure (Supply in Render Dashboard)
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_JWKS_URL
+        sync: false
+
+      # InfluxDB Time-Series Telemetry (Supply in Render Dashboard)
+      - key: INFLUXDB_URL
+        sync: false
+      - key: INFLUXDB_TOKEN
+        sync: false
+      - key: INFLUXDB_ORG
+        sync: false
+      - key: INFLUXDB_BUCKET
+        sync: false
+
+      # Feature Flags (Hardware Prototype Profiles)
+      - key: VITE_ENABLE_PURIFICATION
+        value: "false"
+      - key: VITE_ENABLE_ALL_SENSORS
+        value: "false"
+
+      # MQTT Broker Configuration (Optional)
+      - key: MQTT_ENABLED
+        value: "false"
+      - key: MQTT_BROKER_URL
+        sync: false
+      - key: MQTT_USERNAME
+        sync: false
+      - key: MQTT_PASSWORD
+        sync: false
+      - key: MQTT_CLIENT_ID
+        value: hydrogrid-render

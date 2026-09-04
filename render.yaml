@@ -3,7 +3,7 @@ services:
     name: hydrogrid
     runtime: node
     plan: free
-    buildCommand: bun install && bun run build
+    buildCommand: bun install && bun run db:push && bun run db:generate && bun run build
     startCommand: bun run start
     healthCheckPath: /api/health
     envVars:
@@ -12,14 +12,8 @@ services:
       - key: BUN_VERSION
         value: 1.4.0
 
-      # Supabase Infrastructure (Supply in Render Dashboard)
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_PUBLISHABLE_KEY
-        sync: false
-      - key: SUPABASE_SECRET_KEY
-        sync: false
-      - key: SUPABASE_JWKS_URL
+      # Relational Database (PostgreSQL via Prisma - Supply in Render Dashboard)
+      - key: DATABASE_URL
         sync: false
 
       # InfluxDB Time-Series Telemetry (Supply in Render Dashboard)
@@ -40,7 +34,7 @@ services:
 
       # MQTT Broker Configuration (Optional)
       - key: MQTT_ENABLED
-        value: "true"
+        value: "false"
       - key: MQTT_BROKER_URL
         sync: false
       - key: MQTT_USERNAME

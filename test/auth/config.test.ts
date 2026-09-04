@@ -2,12 +2,11 @@ import { describe, expect, it } from "bun:test";
 
 import { getServerConfig } from "../../src/server/config";
 import {
-  getSupabaseAdminClient,
-  getSupabaseServerClient,
-  isSupabaseConfigured,
-} from "../../src/server/db/supabase";
+  getPrismaClient,
+  isPrismaConfigured,
+} from "../../src/server/db/prisma";
 
-describe("Supabase Configuration Handling", () => {
+describe("Database & Server Configuration Handling", () => {
   it("getServerConfig returns a valid configuration object", () => {
     const config = getServerConfig();
     expect(config).toBeDefined();
@@ -15,62 +14,49 @@ describe("Supabase Configuration Handling", () => {
     expect(typeof config.NODE_ENV).toBe("string");
   });
 
-  it("handles missing Supabase configuration without crashing", () => {
-    // Save original env
-    const origUrl = process.env.SUPABASE_URL;
-    const origPub = process.env.SUPABASE_PUBLISHABLE_KEY;
-    const origSec = process.env.SUPABASE_SECRET_KEY;
+  it("handles missing DATABASE_URL without crashing", () => {
+    const origUrl = process.env.DATABASE_URL;
 
     try {
-      delete process.env.SUPABASE_URL;
-      delete process.env.SUPABASE_PUBLISHABLE_KEY;
-      delete process.env.SUPABASE_SECRET_KEY;
+      delete process.env.DATABASE_URL;
 
-      expect(isSupabaseConfigured()).toBe(false);
-      expect(getSupabaseServerClient()).toBeNull();
-      expect(getSupabaseAdminClient()).toBeNull();
+      expect(isPrismaConfigured()).toBe(false);
+      expect(getPrismaClient()).toBeNull();
     } finally {
-      // Restore
-      if (origUrl) process.env.SUPABASE_URL = origUrl;
-      if (origPub) process.env.SUPABASE_PUBLISHABLE_KEY = origPub;
-      if (origSec) process.env.SUPABASE_SECRET_KEY = origSec;
+      if (origUrl) process.env.DATABASE_URL = origUrl;
     }
   });
 
-  it("detects configured environment correctly when keys are present", () => {
-    const origUrl = process.env.SUPABASE_URL;
-    const origPub = process.env.SUPABASE_PUBLISHABLE_KEY;
+  it("detects configured environment correctly when DATABASE_URL is present", () => {
+    const origUrl = process.env.DATABASE_URL;
 
     try {
-      process.env.SUPABASE_URL = "https://example.supabase.co";
-      process.env.SUPABASE_PUBLISHABLE_KEY = "test-pub-key";
+      process.env.DATABASE_URL =
+        "postgresql://postgres:password@localhost:5432/hydrogrid";
 
-      expect(isSupabaseConfigured()).toBe(true);
-      const serverClient = getSupabaseServerClient();
-      expect(serverClient).not.toBeNull();
+      expect(isPrismaConfigured()).toBe(true);
+      const prisma = getPrismaClient();
+      expect(prisma).not.toBeNull();
     } finally {
-      if (origUrl) process.env.SUPABASE_URL = origUrl;
-      else delete process.env.SUPABASE_URL;
-
-      if (origPub) process.env.SUPABASE_PUBLISHABLE_KEY = origPub;
-      else delete process.env.SUPABASE_PUBLISHABLE_KEY;
+      if (origUrl) process.env.DATABASE_URL = origUrl;
+      else delete process.env.DATABASE_URL;
     }
   });
 
   it("sanitizes empty strings in optional environment variables without error", () => {
-    const origJwks = process.env.SUPABASE_JWKS_URL;
+    const origUrl = process.env.DATABASE_URL;
     const origToken = process.env.INFLUXDB_TOKEN;
 
     try {
-      process.env.SUPABASE_JWKS_URL = "   ";
+      process.env.DATABASE_URL = "   ";
       process.env.INFLUXDB_TOKEN = "";
 
       const config = getServerConfig();
-      expect(config.SUPABASE_JWKS_URL).toBeUndefined();
+      expect(config.DATABASE_URL).toBeUndefined();
       expect(config.INFLUXDB_TOKEN).toBeUndefined();
     } finally {
-      if (origJwks) process.env.SUPABASE_JWKS_URL = origJwks;
-      else delete process.env.SUPABASE_JWKS_URL;
+      if (origUrl) process.env.DATABASE_URL = origUrl;
+      else delete process.env.DATABASE_URL;
 
       if (origToken) process.env.INFLUXDB_TOKEN = origToken;
       else delete process.env.INFLUXDB_TOKEN;

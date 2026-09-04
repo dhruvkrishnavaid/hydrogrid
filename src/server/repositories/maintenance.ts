@@ -3,10 +3,7 @@ import type {
   FilterStatus,
   FilterType,
 } from "../../lib/schemas/database";
-import {
-  getSupabaseAdminClient,
-  getSupabaseServerClient,
-} from "../db/supabase";
+import { getPrismaClient } from "../db/prisma";
 
 export interface InsertFilterMaintenance {
   site_id: string;
@@ -58,11 +55,34 @@ const DEFAULT_FILTERS: Array<Omit<FilterMaintenanceRecord, "id" | "site_id">> =
     },
   ];
 
+function mapMaintenance(raw: any): FilterMaintenanceRecord {
+  return {
+    id: raw.id,
+    site_id: raw.siteId,
+    filter_type: raw.filterType,
+    status: raw.status,
+    life_percent: raw.lifePercent,
+    last_serviced_at:
+      raw.lastServicedAt instanceof Date
+        ? raw.lastServicedAt.toISOString()
+        : String(raw.lastServicedAt || new Date().toISOString()),
+    next_service_due_at:
+      raw.nextServiceDueAt instanceof Date
+        ? raw.nextServiceDueAt.toISOString()
+        : String(raw.nextServiceDueAt || new Date().toISOString()),
+    notes: raw.notes ?? null,
+    created_at:
+      raw.createdAt instanceof Date
+        ? raw.createdAt.toISOString()
+        : String(raw.createdAt || new Date().toISOString()),
+  };
+}
+
 export async function getMaintenanceBySiteId(
   siteId: string,
 ): Promise<Array<FilterMaintenanceRecord>> {
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return DEFAULT_FILTERS.map((f, i) => ({
       id: `default-maint-${i}`,
       site_id: siteId,
@@ -70,28 +90,36 @@ export async function getMaintenanceBySiteId(
     }));
   }
 
-  const { data, error } = await supabase
-    .from("filter_maintenance")
-    .select("*")
-    .eq("site_id", siteId)
-    .order("created_at", { ascending: true });
+  try {
+    const records = await prisma.filterMaintenance.findMany({
+      where: { siteId },
+      orderBy: { createdAt: "asc" },
+    });
 
-  if (error || !data || data.length === 0) {
+    if (!records || records.length === 0) {
+      return DEFAULT_FILTERS.map((f, i) => ({
+        id: `default-maint-${i}`,
+        site_id: siteId,
+        ...f,
+      }));
+    }
+
+    return records.map(mapMaintenance);
+  } catch (err) {
+    console.error("Error fetching maintenance records with Prisma:", err);
     return DEFAULT_FILTERS.map((f, i) => ({
       id: `default-maint-${i}`,
       site_id: siteId,
       ...f,
     }));
   }
-
-  return data as Array<FilterMaintenanceRecord>;
 }
 
 export async function createFilterMaintenance(
   maint: InsertFilterMaintenance,
 ): Promise<FilterMaintenanceRecord | null> {
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return {
       id: "mem-maint-" + Date.now(),
       site_id: maint.site_id,
@@ -107,26 +135,26 @@ export async function createFilterMaintenance(
     };
   }
 
-  const { data, error } = await supabase
-    .from("filter_maintenance")
-    .insert({
-      site_id: maint.site_id,
-      filter_type: maint.filter_type,
-      status: maint.status ?? "HEALTHY",
-      life_percent: maint.life_percent ?? 100.0,
-      last_serviced_at: maint.last_serviced_at ?? new Date().toISOString(),
-      next_service_due_at:
-        maint.next_service_due_at ??
-        new Date(Date.now() + 90 * 86400000).toISOString(),
-      notes: maint.notes ?? null,
-    })
-    .select("*")
-    .single();
+  try {
+    const created = await prisma.filterMaintenance.create({
+      data: {
+        siteId: maint.site_id,
+        filterType: maint.filter_type as any,
+        status: (maint.status as any) ?? "HEALTHY",
+        lifePercent: maint.life_percent ?? 100.0,
+        lastServicedAt: maint.last_serviced_at
+          ? new Date(maint.last_serviced_at)
+          : new Date(),
+        nextServiceDueAt: maint.next_service_due_at
+          ? new Date(maint.next_service_due_at)
+          : new Date(Date.now() + 90 * 86400000),
+        notes: maint.notes ?? null,
+      },
+    });
 
-  if (error) {
-    console.error("Error creating filter maintenance record:", error);
+    return mapMaintenance(created);
+  } catch (err) {
+    console.error("Error creating filter maintenance record with Prisma:", err);
     return null;
   }
-
-  return data as FilterMaintenanceRecord;
 }

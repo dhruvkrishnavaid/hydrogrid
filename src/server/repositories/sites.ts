@@ -1,8 +1,5 @@
 import type { Site } from "../../lib/schemas/database";
-import {
-  getSupabaseAdminClient,
-  getSupabaseServerClient,
-} from "../db/supabase";
+import { getPrismaClient } from "../db/prisma";
 
 export interface InsertSite {
   name: string;
@@ -37,23 +34,47 @@ export const DEFAULT_DEMO_SITE: Site = {
   updated_at: new Date().toISOString(),
 };
 
+function mapSite(raw: any): Site {
+  return {
+    id: raw.id,
+    name: raw.name,
+    village: raw.village,
+    district: raw.district,
+    state: raw.state,
+    latitude: raw.latitude,
+    longitude: raw.longitude,
+    status: raw.status,
+    created_at:
+      raw.createdAt instanceof Date
+        ? raw.createdAt.toISOString()
+        : String(raw.createdAt || new Date().toISOString()),
+    updated_at:
+      raw.updatedAt instanceof Date
+        ? raw.updatedAt.toISOString()
+        : String(raw.updatedAt || new Date().toISOString()),
+  };
+}
+
 export async function getSites(): Promise<Array<Site>> {
-  // Use admin client to bypass RLS — authorization is enforced at the API layer
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return [DEFAULT_DEMO_SITE];
   }
 
-  const { data, error } = await supabase
-    .from("sites")
-    .select("*")
-    .order("created_at", { ascending: true });
+  try {
+    const sites = await prisma.site.findMany({
+      orderBy: { createdAt: "asc" },
+    });
 
-  if (error || !data || data.length === 0) {
+    if (!sites || sites.length === 0) {
+      return [DEFAULT_DEMO_SITE];
+    }
+
+    return sites.map(mapSite);
+  } catch (err) {
+    console.error("Error fetching sites with Prisma:", err);
     return [DEFAULT_DEMO_SITE];
   }
-
-  return (data as Array<Site>) ?? [DEFAULT_DEMO_SITE];
 }
 
 export async function getSiteById(id: string): Promise<Site | null> {
@@ -61,65 +82,79 @@ export async function getSiteById(id: string): Promise<Site | null> {
     return DEFAULT_DEMO_SITE;
   }
 
-  // Use admin client to bypass RLS — authorization is enforced at the API layer
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return DEFAULT_DEMO_SITE;
   }
 
-  const { data, error } = await supabase
-    .from("sites")
-    .select("*")
-    .eq("id", id)
-    .single();
+  try {
+    const site = await prisma.site.findUnique({
+      where: { id },
+    });
 
-  if (error || !data) {
+    if (!site) {
+      return DEFAULT_DEMO_SITE;
+    }
+
+    return mapSite(site);
+  } catch (err) {
+    console.error("Error fetching site by id with Prisma:", err);
     return DEFAULT_DEMO_SITE;
   }
-
-  return data as Site;
 }
 
 export async function createSite(site: InsertSite): Promise<Site | null> {
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return null;
   }
 
-  const { data, error } = await supabase
-    .from("sites")
-    .insert(site)
-    .select("*")
-    .single();
+  try {
+    const created = await prisma.site.create({
+      data: {
+        name: site.name,
+        village: site.village,
+        district: site.district,
+        state: site.state,
+        latitude: site.latitude,
+        longitude: site.longitude,
+        status: site.status ?? "ONLINE",
+      },
+    });
 
-  if (error) {
-    console.error("Error creating site:", error);
+    return mapSite(created);
+  } catch (err) {
+    console.error("Error creating site with Prisma:", err);
     return null;
   }
-
-  return data as Site;
 }
 
 export async function updateSite(
   id: string,
   update: UpdateSite,
 ): Promise<Site | null> {
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return null;
   }
 
-  const { data, error } = await supabase
-    .from("sites")
-    .update({ ...update, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .select("*")
-    .single();
+  try {
+    const updated = await prisma.site.update({
+      where: { id },
+      data: {
+        ...(update.name !== undefined && { name: update.name }),
+        ...(update.village !== undefined && { village: update.village }),
+        ...(update.district !== undefined && { district: update.district }),
+        ...(update.state !== undefined && { state: update.state }),
+        ...(update.latitude !== undefined && { latitude: update.latitude }),
+        ...(update.longitude !== undefined && { longitude: update.longitude }),
+        ...(update.status !== undefined && { status: update.status }),
+      },
+    });
 
-  if (error) {
-    console.error("Error updating site:", error);
+    return mapSite(updated);
+  } catch (err) {
+    console.error("Error updating site with Prisma:", err);
     return null;
   }
-
-  return data as Site;
 }

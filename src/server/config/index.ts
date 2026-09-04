@@ -20,11 +20,8 @@ const serverEnvSchema = z
       .default("development"),
     PORT: z.coerce.number().default(3000),
 
-    // Supabase (Current API Key Model)
-    SUPABASE_URL: optionalUrlSchema,
-    SUPABASE_PUBLISHABLE_KEY: optionalStringSchema,
-    SUPABASE_SECRET_KEY: optionalStringSchema,
-    SUPABASE_JWKS_URL: optionalUrlSchema,
+    // Relational Database (PostgreSQL via Prisma)
+    DATABASE_URL: optionalStringSchema,
 
     // InfluxDB
     INFLUXDB_URL: optionalUrlSchema,
@@ -65,10 +62,7 @@ export function getServerConfig(): ServerConfig {
         ? process.env.NODE_ENV
         : "development",
     PORT: Number(process.env.PORT) || 3000,
-    SUPABASE_URL: process.env.SUPABASE_URL || undefined,
-    SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY || undefined,
-    SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY || undefined,
-    SUPABASE_JWKS_URL: process.env.SUPABASE_JWKS_URL || undefined,
+    DATABASE_URL: process.env.DATABASE_URL || undefined,
     INFLUXDB_URL: process.env.INFLUXDB_URL || undefined,
     INFLUXDB_TOKEN: process.env.INFLUXDB_TOKEN || undefined,
     INFLUXDB_ORG: process.env.INFLUXDB_ORG || undefined,

@@ -1,0 +1,209 @@
+// HydroGrid Prisma Schema
+// PostgreSQL Relational Database Model
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SiteStatus {
+  ONLINE
+  OFFLINE
+  DEGRADED
+}
+
+enum DeviceType {
+  SOURCE_SENSOR_NODE
+  PURIFICATION_CONTROLLER
+  DISTRIBUTION_NODE
+}
+
+enum DeviceStatus {
+  ONLINE
+  DEGRADED
+  OFFLINE
+  FAULT
+}
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+  VIEWER
+}
+
+enum EventSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AlertSeverity {
+  WARNING
+  CRITICAL
+}
+
+enum AlertStatus {
+  UNREAD
+  READ
+  ACKNOWLEDGED
+}
+
+enum SensorHealthStatus {
+  HEALTHY
+  DEGRADED
+  CALIBRATION_REQUIRED
+  FAULT
+}
+
+enum FilterType {
+  SEDIMENT
+  CARBON
+  CALCITE
+  UV
+}
+
+enum FilterStatus {
+  HEALTHY
+  WARNING
+  DEGRADED
+  FAULT
+}
+
+model Site {
+  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                  String
+  village               String
+  district              String
+  state                 String
+  latitude              Float
+  longitude             Float
+  status                SiteStatus             @default(ONLINE)
+  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  devices               Device[]
+  memberships           SiteMembership[]
+  qualityConfiguration  QualityConfiguration?
+  events                Event[]
+  alerts                Alert[]
+  sensorCalibrations    SensorCalibration[]
+  filterMaintenances    FilterMaintenance[]
+
+  @@map("sites")
+}
+
+model Device {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  siteId             String              @map("site_id") @db.Uuid
+  name               String
+  type               DeviceType
+  status             DeviceStatus        @default(ONLINE)
+  firmwareVersion    String              @default("1.0.0") @map("firmware_version")
+  lastSeenAt         DateTime            @default(now()) @map("last_seen_at") @db.Timestamptz
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  site               Site                @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  events             Event[]
+  sensorCalibrations SensorCalibration[]
+
+  @@index([siteId], map: "idx_devices_site_id")
+  @@map("devices")
+}
+
+model SiteMembership {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  siteId    String   @map("site_id") @db.Uuid
+  role      UserRole @default(VIEWER)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, siteId], map: "uq_site_membership")
+  @@index([userId], map: "idx_site_memberships_user")
+  @@index([siteId], map: "idx_site_memberships_site")
+  @@map("site_memberships")
+}
+
+model QualityConfiguration {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  siteId                 String   @unique @map("site_id") @db.Uuid
+  minPh                  Float    @default(6.5) @map("min_ph")
+  maxPh                  Float    @default(8.5) @map("max_ph")
+  maxTds                 Float    @default(500.0) @map("max_tds")
+  maxTurbidity           Float    @default(5.0) @map("max_turbidity")
+  maxFlowMismatchPercent Float    @default(15.0) @map("max_flow_mismatch_percent")
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  site                   Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@map("quality_configurations")
+}
+
+model Event {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  siteId       String        @map("site_id") @db.Uuid
+  deviceId     String?       @map("device_id") @db.Uuid
+  type         String
+  severity     EventSeverity @default(INFO)
+  message      String
+  acknowledged Boolean       @default(false)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  site         Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  device       Device?       @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  alerts       Alert[]
+
+  @@index([siteId, createdAt(sort: Desc)], map: "idx_events_site_created")
+  @@map("events")
+}
+
+model Alert {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  siteId         String        @map("site_id") @db.Uuid
+  eventId        String?       @map("event_id") @db.Uuid
+  type           String
+  severity       AlertSeverity @default(WARNING)
+  status         AlertStatus   @default(UNREAD)
+  message        String
+  acknowledgedAt DateTime?     @map("acknowledged_at") @db.Timestamptz
+  acknowledgedBy String?       @map("acknowledged_by") @db.Uuid
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  site           Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  event          Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([siteId, status], map: "idx_alerts_site_status")
+  @@map("alerts")
+}
+
+model SensorCalibration {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  siteId            String             @map("site_id") @db.Uuid
+  deviceId          String?            @map("device_id") @db.Uuid
+  sensor            String
+  status            SensorHealthStatus @default(HEALTHY)
+  offset            Float              @default(0.0)
+  lastCalibratedAt  DateTime           @default(now()) @map("last_calibrated_at") @db.Timestamptz
+  nextCalibrationAt DateTime           @default(now()) @map("next_calibration_at") @db.Timestamptz
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  site              Site               @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  device            Device?            @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@index([siteId], map: "idx_sensor_calibrations_site")
+  @@map("sensor_calibrations")
+}
+
+model FilterMaintenance {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  siteId           String       @map("site_id") @db.Uuid
+  filterType       FilterType   @map("filter_type")
+  status           FilterStatus @default(HEALTHY)
+  lifePercent      Float        @default(100.0) @map("life_percent")
+  lastServicedAt   DateTime     @default(now()) @map("last_serviced_at") @db.Timestamptz
+  nextServiceDueAt DateTime     @default(now()) @map("next_service_due_at") @db.Timestamptz
+  notes            String?
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  site             Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId], map: "idx_filter_maintenance_site")
+  @@map("filter_maintenance")
+}

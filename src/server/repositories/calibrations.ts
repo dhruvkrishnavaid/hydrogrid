@@ -1,8 +1,5 @@
 import type { SensorCalibrationRecord } from "../../lib/schemas/database";
-import {
-  getSupabaseAdminClient,
-  getSupabaseServerClient,
-} from "../db/supabase";
+import { getPrismaClient } from "../db/prisma";
 
 export interface InsertSensorCalibration {
   site_id: string;
@@ -46,11 +43,34 @@ const DEFAULT_CALIBRATIONS: Array<
   },
 ];
 
+function mapCalibration(raw: any): SensorCalibrationRecord {
+  return {
+    id: raw.id,
+    site_id: raw.siteId,
+    device_id: raw.deviceId || null,
+    sensor: raw.sensor,
+    status: raw.status,
+    offset: raw.offset,
+    last_calibrated_at:
+      raw.lastCalibratedAt instanceof Date
+        ? raw.lastCalibratedAt.toISOString()
+        : String(raw.lastCalibratedAt || new Date().toISOString()),
+    next_calibration_at:
+      raw.nextCalibrationAt instanceof Date
+        ? raw.nextCalibrationAt.toISOString()
+        : String(raw.nextCalibrationAt || new Date().toISOString()),
+    created_at:
+      raw.createdAt instanceof Date
+        ? raw.createdAt.toISOString()
+        : String(raw.createdAt || new Date().toISOString()),
+  };
+}
+
 export async function getCalibrationsBySiteId(
   siteId: string,
 ): Promise<Array<SensorCalibrationRecord>> {
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return DEFAULT_CALIBRATIONS.map((c, i) => ({
       id: `default-cal-${i}`,
       site_id: siteId,
@@ -58,28 +78,36 @@ export async function getCalibrationsBySiteId(
     }));
   }
 
-  const { data, error } = await supabase
-    .from("sensor_calibrations")
-    .select("*")
-    .eq("site_id", siteId)
-    .order("created_at", { ascending: true });
+  try {
+    const calibrations = await prisma.sensorCalibration.findMany({
+      where: { siteId },
+      orderBy: { createdAt: "asc" },
+    });
 
-  if (error || !data || data.length === 0) {
+    if (!calibrations || calibrations.length === 0) {
+      return DEFAULT_CALIBRATIONS.map((c, i) => ({
+        id: `default-cal-${i}`,
+        site_id: siteId,
+        ...c,
+      }));
+    }
+
+    return calibrations.map(mapCalibration);
+  } catch (err) {
+    console.error("Error fetching calibrations with Prisma:", err);
     return DEFAULT_CALIBRATIONS.map((c, i) => ({
       id: `default-cal-${i}`,
       site_id: siteId,
       ...c,
     }));
   }
-
-  return data as Array<SensorCalibrationRecord>;
 }
 
 export async function recordCalibration(
   calibration: InsertSensorCalibration,
 ): Promise<SensorCalibrationRecord | null> {
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return {
       id: "mem-cal-" + Date.now(),
       site_id: calibration.site_id,
@@ -96,27 +124,26 @@ export async function recordCalibration(
     };
   }
 
-  const { data, error } = await supabase
-    .from("sensor_calibrations")
-    .insert({
-      site_id: calibration.site_id,
-      device_id: calibration.device_id ?? null,
-      sensor: calibration.sensor,
-      status: calibration.status ?? "HEALTHY",
-      offset: calibration.offset ?? 0.0,
-      last_calibrated_at:
-        calibration.last_calibrated_at ?? new Date().toISOString(),
-      next_calibration_at:
-        calibration.next_calibration_at ??
-        new Date(Date.now() + 30 * 86400000).toISOString(),
-    })
-    .select("*")
-    .single();
+  try {
+    const created = await prisma.sensorCalibration.create({
+      data: {
+        siteId: calibration.site_id,
+        deviceId: calibration.device_id ?? null,
+        sensor: calibration.sensor,
+        status: (calibration.status as any) ?? "HEALTHY",
+        offset: calibration.offset ?? 0.0,
+        lastCalibratedAt: calibration.last_calibrated_at
+          ? new Date(calibration.last_calibrated_at)
+          : new Date(),
+        nextCalibrationAt: calibration.next_calibration_at
+          ? new Date(calibration.next_calibration_at)
+          : new Date(Date.now() + 30 * 86400000),
+      },
+    });
 
-  if (error) {
-    console.error("Error creating sensor calibration:", error);
+    return mapCalibration(created);
+  } catch (err) {
+    console.error("Error creating sensor calibration with Prisma:", err);
     return null;
   }
-
-  return data as SensorCalibrationRecord;
 }

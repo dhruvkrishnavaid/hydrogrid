@@ -1,8 +1,5 @@
 import type { SiteMembership, UserRole } from "../../lib/schemas/database";
-import {
-  getSupabaseAdminClient,
-  getSupabaseServerClient,
-} from "../db/supabase";
+import { getPrismaClient } from "../db/prisma";
 
 const DEMO_USER_ROLES: Record<string, UserRole> = {
   "b2aa668a-a16b-405b-89ce-7c912f29fb20": "ADMIN",
@@ -10,12 +7,24 @@ const DEMO_USER_ROLES: Record<string, UserRole> = {
   "cc651fbe-31fc-4ed8-b4be-bc6346b7dd52": "VIEWER",
 };
 
+function mapMembership(raw: any): SiteMembership {
+  return {
+    id: raw.id,
+    user_id: raw.userId,
+    site_id: raw.siteId,
+    role: raw.role,
+    created_at:
+      raw.createdAt instanceof Date
+        ? raw.createdAt.toISOString()
+        : String(raw.createdAt || new Date().toISOString()),
+  };
+}
+
 export async function getUserMemberships(
   userId: string,
 ): Promise<Array<SiteMembership>> {
-  // Use admin client to bypass RLS — this is a server-only operation
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return [
       {
         id: "mem-demo-001",
@@ -27,12 +36,26 @@ export async function getUserMemberships(
     ];
   }
 
-  const { data, error } = await supabase
-    .from("site_memberships")
-    .select("*")
-    .eq("user_id", userId);
+  try {
+    const memberships = await prisma.siteMembership.findMany({
+      where: { userId },
+    });
 
-  if (error || !data || data.length === 0) {
+    if (!memberships || memberships.length === 0) {
+      return [
+        {
+          id: "mem-demo-001",
+          user_id: userId,
+          site_id: "00000000-0000-0000-0000-000000000001",
+          role: DEMO_USER_ROLES[userId] ?? "ADMIN",
+          created_at: new Date().toISOString(),
+        },
+      ];
+    }
+
+    return memberships.map(mapMembership);
+  } catch (err) {
+    console.error("Error fetching memberships with Prisma:", err);
     return [
       {
         id: "mem-demo-001",
@@ -43,30 +66,30 @@ export async function getUserMemberships(
       },
     ];
   }
-
-  return (data as Array<SiteMembership>) ?? [];
 }
 
 export async function getUserSiteRole(
   userId: string,
   siteId: string,
 ): Promise<UserRole | null> {
-  // Use admin client to bypass RLS — this is a server-only operation
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return DEMO_USER_ROLES[userId] ?? "ADMIN";
   }
 
-  const { data, error } = await supabase
-    .from("site_memberships")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("site_id", siteId)
-    .single();
+  try {
+    const membership = await prisma.siteMembership.findFirst({
+      where: { userId, siteId },
+      select: { role: true },
+    });
 
-  if (error || !data) {
+    if (!membership) {
+      return DEMO_USER_ROLES[userId] ?? "ADMIN";
+    }
+
+    return membership.role ?? null;
+  } catch (err) {
+    console.error("Error fetching user site role with Prisma:", err);
     return DEMO_USER_ROLES[userId] ?? "ADMIN";
   }
-
-  return (data.role as UserRole) ?? null;
 }

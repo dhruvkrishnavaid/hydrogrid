@@ -8,7 +8,6 @@ import {
 import type React from "react";
 
 import { api, getStoredToken, setStoredToken } from "./api-client";
-import { getSupabaseBrowserClient } from "./supabase-client";
 import type { SiteRecord, UserRole } from "./types";
 
 export interface AuthUser {
@@ -74,35 +73,17 @@ const DEFAULT_FALLBACK_SITE: SiteRecord = {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [token, setToken] = useState<string | null>(getStoredToken());
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    if (typeof window !== "undefined") {
-      const stored = window.localStorage.getItem("hydrogrid_auth_user");
-      if (stored) {
-        try {
-          return JSON.parse(stored) as AuthUser;
-        } catch {
-          // ignore
-        }
-      }
-    }
-    return {
-      id: DEMO_CREDENTIALS.ADMIN.id,
-      email: DEMO_CREDENTIALS.ADMIN.email,
-      role: "ADMIN",
-    };
+  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<AuthUser | null>({
+    id: DEMO_CREDENTIALS.ADMIN.id,
+    email: DEMO_CREDENTIALS.ADMIN.email,
+    role: "ADMIN",
   });
 
   const [sites, setSites] = useState<Array<SiteRecord>>([]);
-  const [activeSiteId, setActiveSiteIdState] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      return (
-        window.localStorage.getItem("hydrogrid_active_station_id") ||
-        DEFAULT_DEMO_SITE_ID
-      );
-    }
-    return DEFAULT_DEMO_SITE_ID;
-  });
+  const [activeSiteId, setActiveSiteIdState] = useState<string | null>(
+    DEFAULT_DEMO_SITE_ID,
+  );
 
   // Edge mode: station is always entered directly without blocking gate screens
   const [isStationEntered, setIsStationEntered] = useState<boolean>(true);
@@ -157,21 +138,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       try {
         const cred = DEMO_CREDENTIALS[targetRole];
-        const supabase = getSupabaseBrowserClient();
-
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: cred.email,
-          password: cred.pass,
-        });
-
-        let accessToken = data?.session?.access_token;
-        let userId = data?.user?.id ?? cred.id;
-
-        if (error || !accessToken) {
-          // Graceful fallback to demo token for unseeded environments
-          accessToken = `demo-${targetRole.toLowerCase()}-token`;
-          userId = cred.id;
-        }
+        const accessToken = `demo-${targetRole.toLowerCase()}-token`;
+        const userId = cred.id;
 
         const authUser: AuthUser = {
           id: userId,
@@ -208,9 +176,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     async function initAuth() {
       setIsLoading(true);
-      const existingToken = getStoredToken();
+      if (typeof window !== "undefined") {
+        const storedUser = window.localStorage.getItem("hydrogrid_auth_user");
+        if (storedUser) {
+          try {
+            const parsed = JSON.parse(storedUser) as AuthUser;
+            if (mounted) setUser(parsed);
+          } catch {
+            // ignore
+          }
+        }
+        const storedStationId = window.localStorage.getItem(
+          "hydrogrid_active_station_id",
+        );
+        if (storedStationId && mounted) {
+          setActiveSiteIdState(storedStationId);
+        }
+      }
 
       if (existingToken) {
+        if (mounted) setToken(existingToken);
         const loaded = await refreshSites(existingToken);
         if (mounted && loaded.length > 0) {
           setIsLoading(false);
@@ -257,8 +242,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       window.localStorage.removeItem("hydrogrid_active_station_id");
       window.localStorage.setItem("hydrogrid_station_entered", "true");
     }
-    const supabase = getSupabaseBrowserClient();
-    supabase.auth.signOut().catch(() => {});
   };
 
   const setActiveSiteId = (siteId: string) => {

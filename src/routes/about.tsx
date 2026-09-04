@@ -83,11 +83,11 @@ function AboutPage() {
 
               <div className="border-border/70 bg-muted/20 space-y-1 rounded-xl border p-3">
                 <span className="text-foreground font-bold">
-                  Relational Database
+                  Relational Database & ORM
                 </span>
                 <p className="text-muted-foreground">
-                  Supabase PostgreSQL with Row Level Security & 3-tier RBAC
-                  (ADMIN &gt; OPERATOR &gt; VIEWER).
+                  PostgreSQL with Prisma ORM & 3-tier RBAC (ADMIN &gt; OPERATOR
+                  &gt; VIEWER).
                 </p>
               </div>
 

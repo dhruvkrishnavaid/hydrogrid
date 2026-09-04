@@ -1,8 +1,5 @@
 import type { Device } from "../../lib/schemas/database";
-import {
-  getSupabaseAdminClient,
-  getSupabaseServerClient,
-} from "../db/supabase";
+import { getPrismaClient } from "../db/prisma";
 
 export interface InsertDevice {
   site_id: string;
@@ -49,65 +46,94 @@ const DEFAULT_DEMO_DEVICES: Array<Device> = [
     : []),
 ];
 
+function mapDevice(raw: any): Device {
+  return {
+    id: raw.id,
+    site_id: raw.siteId,
+    name: raw.name,
+    type: raw.type,
+    status: raw.status,
+    firmware_version: raw.firmwareVersion,
+    last_seen_at:
+      raw.lastSeenAt instanceof Date
+        ? raw.lastSeenAt.toISOString()
+        : String(raw.lastSeenAt || new Date().toISOString()),
+    created_at:
+      raw.createdAt instanceof Date
+        ? raw.createdAt.toISOString()
+        : String(raw.createdAt || new Date().toISOString()),
+  };
+}
+
 export async function getDevicesBySiteId(
   siteId: string,
 ): Promise<Array<Device>> {
-  // Use admin client to bypass RLS — authorization enforced at the API layer
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return DEFAULT_DEMO_DEVICES;
   }
 
-  const { data, error } = await supabase
-    .from("devices")
-    .select("*")
-    .eq("site_id", siteId)
-    .order("created_at", { ascending: true });
+  try {
+    const devices = await prisma.device.findMany({
+      where: { siteId },
+      orderBy: { createdAt: "asc" },
+    });
 
-  if (error || !data || data.length === 0) {
+    if (!devices || devices.length === 0) {
+      return DEFAULT_DEMO_DEVICES;
+    }
+
+    return devices.map(mapDevice);
+  } catch (err) {
+    console.error("Error fetching devices with Prisma:", err);
     return DEFAULT_DEMO_DEVICES;
   }
-
-  return (data as Array<Device>) ?? DEFAULT_DEMO_DEVICES;
 }
 
 export async function getDeviceById(id: string): Promise<Device | null> {
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return null;
   }
 
-  const { data, error } = await supabase
-    .from("devices")
-    .select("*")
-    .eq("id", id)
-    .single();
+  try {
+    const device = await prisma.device.findUnique({
+      where: { id },
+    });
 
-  if (error || !data) {
+    if (!device) {
+      return null;
+    }
+
+    return mapDevice(device);
+  } catch (err) {
+    console.error("Error fetching device by id with Prisma:", err);
     return null;
   }
-
-  return data as Device;
 }
 
 export async function createDevice(
   device: InsertDevice,
 ): Promise<Device | null> {
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return null;
   }
 
-  const { data, error } = await supabase
-    .from("devices")
-    .insert(device)
-    .select("*")
-    .single();
+  try {
+    const created = await prisma.device.create({
+      data: {
+        siteId: device.site_id,
+        name: device.name,
+        type: device.type,
+        status: device.status ?? "ONLINE",
+        firmwareVersion: device.firmware_version ?? "1.0.0",
+      },
+    });
 
-  if (error) {
-    console.error("Error creating device:", error);
+    return mapDevice(created);
+  } catch (err) {
+    console.error("Error creating device with Prisma:", err);
     return null;
   }
-
-  return data as Device;
 }

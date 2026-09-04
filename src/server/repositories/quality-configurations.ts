@@ -1,55 +1,82 @@
 import type { QualityConfiguration } from "../../lib/schemas/database";
-import {
-  getSupabaseAdminClient,
-  getSupabaseServerClient,
-} from "../db/supabase";
+import { getPrismaClient } from "../db/prisma";
+
+function mapQualityConfig(raw: any): QualityConfiguration {
+  return {
+    id: raw.id,
+    site_id: raw.siteId,
+    min_ph: raw.minPh,
+    max_ph: raw.maxPh,
+    max_tds: raw.maxTds,
+    max_turbidity: raw.maxTurbidity,
+    max_flow_mismatch_percent: raw.maxFlowMismatchPercent,
+    updated_at:
+      raw.updatedAt instanceof Date
+        ? raw.updatedAt.toISOString()
+        : String(raw.updatedAt || new Date().toISOString()),
+  };
+}
 
 export async function getQualityConfigBySiteId(
   siteId: string,
 ): Promise<QualityConfiguration | null> {
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return null;
   }
 
-  const { data, error } = await supabase
-    .from("quality_configurations")
-    .select("*")
-    .eq("site_id", siteId)
-    .single();
+  try {
+    const config = await prisma.qualityConfiguration.findUnique({
+      where: { siteId },
+    });
 
-  if (error || !data) {
+    if (!config) {
+      return null;
+    }
+
+    return mapQualityConfig(config);
+  } catch (err) {
+    console.error("Error fetching quality config with Prisma:", err);
     return null;
   }
-
-  return data as QualityConfiguration;
 }
 
 export async function upsertQualityConfig(
   siteId: string,
   config: Partial<Omit<QualityConfiguration, "id" | "site_id" | "updated_at">>,
 ): Promise<QualityConfiguration | null> {
-  const supabase = getSupabaseAdminClient() ?? getSupabaseServerClient();
-  if (!supabase) {
+  const prisma = getPrismaClient();
+  if (!prisma) {
     return null;
   }
 
-  const payload = {
-    site_id: siteId,
-    ...config,
-    updated_at: new Date().toISOString(),
-  };
+  try {
+    const upserted = await prisma.qualityConfiguration.upsert({
+      where: { siteId },
+      update: {
+        ...(config.min_ph !== undefined && { minPh: config.min_ph }),
+        ...(config.max_ph !== undefined && { maxPh: config.max_ph }),
+        ...(config.max_tds !== undefined && { maxTds: config.max_tds }),
+        ...(config.max_turbidity !== undefined && {
+          maxTurbidity: config.max_turbidity,
+        }),
+        ...(config.max_flow_mismatch_percent !== undefined && {
+          maxFlowMismatchPercent: config.max_flow_mismatch_percent,
+        }),
+      },
+      create: {
+        siteId,
+        minPh: config.min_ph ?? 6.5,
+        maxPh: config.max_ph ?? 8.5,
+        maxTds: config.max_tds ?? 500.0,
+        maxTurbidity: config.max_turbidity ?? 5.0,
+        maxFlowMismatchPercent: config.max_flow_mismatch_percent ?? 15.0,
+      },
+    });
 
-  const { data, error } = await supabase
-    .from("quality_configurations")
-    .upsert(payload, { onConflict: "site_id" })
-    .select("*")
-    .single();
-
-  if (error) {
-    console.error("Error upserting quality configuration:", error);
+    return mapQualityConfig(upserted);
+  } catch (err) {
+    console.error("Error upserting quality configuration with Prisma:", err);
     return null;
   }
-
-  return data as QualityConfiguration;
 }

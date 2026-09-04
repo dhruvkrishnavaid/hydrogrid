@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { isInfluxDBConfigured } from "../../server/db/influx";
-import { isSupabaseConfigured } from "../../server/db/supabase";
+import { isPrismaConfigured } from "../../server/db/prisma";
 import { ensureServerInitialized } from "../../server/init";
 import { getMqttStatus } from "../../server/services/mqtt";
 import { apiSuccess } from "../../server/utils/response";
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/api/health")({
           version: "0.1.0",
           timestamp: new Date().toISOString(),
           services: {
-            supabase: isSupabaseConfigured() ? "configured" : "unconfigured",
+            database: isPrismaConfigured() ? "configured" : "unconfigured",
             influxdb: isInfluxDBConfigured() ? "configured" : "unconfigured",
             mqtt: mqttStatus.connected
               ? "connected"

@@ -4,6 +4,7 @@ import { createAlert } from "../repositories/alerts";
 import { createEvent } from "../repositories/events";
 import { getQualityConfigBySiteId } from "../repositories/quality-configurations";
 import { broadcastSiteEvent } from "./event-bus";
+import { publishMqttValveActuation } from "./mqtt";
 import {
   getPurificationStatus,
   resetPurificationStatus,
@@ -471,6 +472,19 @@ export async function executeSimulatorScenario(
   const finalAlert = extraAlert ?? safetyAlert;
   if (finalAlert) {
     broadcastSiteEvent(siteId, "alert.created", { siteId, alert: finalAlert });
+  }
+
+  // Actuate edge valve hardware over MQTT (Node Zero solenoid shutoff valve)
+  const valveState: "OPEN" | "CLOSED" = isValveClosed ? "CLOSED" : "OPEN";
+  const reason =
+    safety.reasons[0] ??
+    (isLeak
+      ? "Pipeline leak detected by simulator"
+      : `Simulator scenario: ${normalized}`);
+  try {
+    publishMqttValveActuation(siteId, valveState, reason);
+  } catch (err) {
+    console.warn("[Simulator] Failed to publish MQTT valve actuation:", err);
   }
 
   return {

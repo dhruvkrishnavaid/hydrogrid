@@ -20,9 +20,21 @@ export interface SSEMessage {
 
 type SSEListener = (message: SSEMessage) => void;
 
-// In-memory subscriber sets keyed by siteId
-const subscribersBySite = new Map<string, Set<SSEListener>>();
-const globalSubscribers = new Set<SSEListener>();
+declare global {
+  var __hydrogridSubscribersBySite: Map<string, Set<SSEListener>> | undefined;
+  var __hydrogridGlobalSubscribers: Set<SSEListener> | undefined;
+}
+
+// In-memory subscriber sets keyed by siteId (persisted across SSR module reloads)
+const subscribersBySite =
+  globalThis.__hydrogridSubscribersBySite ??
+  (globalThis.__hydrogridSubscribersBySite = new Map<
+    string,
+    Set<SSEListener>
+  >());
+const globalSubscribers =
+  globalThis.__hydrogridGlobalSubscribers ??
+  (globalThis.__hydrogridGlobalSubscribers = new Set<SSEListener>());
 
 /**
  * Subscribes a listener to SSE events for a specific site.

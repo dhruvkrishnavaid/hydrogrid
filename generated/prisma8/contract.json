@@ -314,12 +314,8 @@
               "event": {
                 "cardinality": "N:1",
                 "on": {
-                  "localFields": [
-                    "eventId"
-                  ],
-                  "targetFields": [
-                    "id"
-                  ]
+                  "localFields": ["eventId"],
+                  "targetFields": ["id"]
                 },
                 "to": {
                   "model": "Event",
@@ -329,12 +325,8 @@
               "site": {
                 "cardinality": "N:1",
                 "on": {
-                  "localFields": [
-                    "siteId"
-                  ],
-                  "targetFields": [
-                    "id"
-                  ]
+                  "localFields": ["siteId"],
+                  "targetFields": ["id"]
                 },
                 "to": {
                   "model": "Site",
@@ -454,12 +446,8 @@
               "events": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "deviceId"
-                  ]
+                  "localFields": ["id"],
+                  "targetFields": ["deviceId"]
                 },
                 "to": {
                   "model": "Event",
@@ -469,12 +457,8 @@
               "sensorCalibrations": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "deviceId"
-                  ]
+                  "localFields": ["id"],
+                  "targetFields": ["deviceId"]
                 },
                 "to": {
                   "model": "SensorCalibration",
@@ -484,12 +468,8 @@
               "site": {
                 "cardinality": "N:1",
                 "on": {
-                  "localFields": [
-                    "siteId"
-                  ],
-                  "targetFields": [
-                    "id"
-                  ]
+                  "localFields": ["siteId"],
+                  "targetFields": ["id"]
                 },
                 "to": {
                   "model": "Site",
@@ -597,12 +577,8 @@
               "alerts": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "eventId"
-                  ]
+                  "localFields": ["id"],
+                  "targetFields": ["eventId"]
                 },
                 "to": {
                   "model": "Alert",
@@ -612,12 +588,8 @@
               "device": {
                 "cardinality": "N:1",
                 "on": {
-                  "localFields": [
-                    "deviceId"
-                  ],
-                  "targetFields": [
-                    "id"
-                  ]
+                  "localFields": ["deviceId"],
+                  "targetFields": ["id"]
                 },
                 "to": {
                   "model": "Device",
@@ -627,12 +599,8 @@
               "site": {
                 "cardinality": "N:1",
                 "on": {
-                  "localFields": [
-                    "siteId"
-                  ],
-                  "targetFields": [
-                    "id"
-                  ]
+                  "localFields": ["siteId"],
+                  "targetFields": ["id"]
                 },
                 "to": {
                   "model": "Site",
@@ -753,12 +721,8 @@
               "site": {
                 "cardinality": "N:1",
                 "on": {
-                  "localFields": [
-                    "siteId"
-                  ],
-                  "targetFields": [
-                    "id"
-                  ]
+                  "localFields": ["siteId"],
+                  "targetFields": ["id"]
                 },
                 "to": {
                   "model": "Site",
@@ -863,12 +827,8 @@
               "site": {
                 "cardinality": "N:1",
                 "on": {
-                  "localFields": [
-                    "siteId"
-                  ],
-                  "targetFields": [
-                    "id"
-                  ]
+                  "localFields": ["siteId"],
+                  "targetFields": ["id"]
                 },
                 "to": {
                   "model": "Site",
@@ -983,12 +943,8 @@
               "device": {
                 "cardinality": "N:1",
                 "on": {
-                  "localFields": [
-                    "deviceId"
-                  ],
-                  "targetFields": [
-                    "id"
-                  ]
+                  "localFields": ["deviceId"],
+                  "targetFields": ["id"]
                 },
                 "to": {
                   "model": "Device",
@@ -998,12 +954,8 @@
               "site": {
                 "cardinality": "N:1",
                 "on": {
-                  "localFields": [
-                    "siteId"
-                  ],
-                  "targetFields": [
-                    "id"
-                  ]
+                  "localFields": ["siteId"],
+                  "targetFields": ["id"]
                 },
                 "to": {
                   "model": "Site",
@@ -1128,12 +1080,8 @@
               "alerts": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "siteId"
-                  ]
+                  "localFields": ["id"],
+                  "targetFields": ["siteId"]
                 },
                 "to": {
                   "model": "Alert",
@@ -1143,12 +1091,8 @@
               "devices": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "siteId"
-                  ]
+                  "localFields": ["id"],
+                  "targetFields": ["siteId"]
                 },
                 "to": {
                   "model": "Device",
@@ -1158,12 +1102,8 @@
               "events": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "siteId"
-                  ]
+                  "localFields": ["id"],
+                  "targetFields": ["siteId"]
                 },
                 "to": {
                   "model": "Event",
@@ -1173,12 +1113,8 @@
               "filterMaintenances": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "siteId"
-                  ]
+                  "localFields": ["id"],
+                  "targetFields": ["siteId"]
                 },
                 "to": {
                   "model": "FilterMaintenance",
@@ -1188,12 +1124,8 @@
               "memberships": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "siteId"
-                  ]
+                  "localFields": ["id"],
+                  "targetFields": ["siteId"]
                 },
                 "to": {
                   "model": "SiteMembership",
@@ -1203,12 +1135,8 @@
               "qualityConfiguration": {
                 "cardinality": "1:1",
                 "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "siteId"
-                  ]
+                  "localFields": ["id"],
+                  "targetFields": ["siteId"]
                 },
                 "to": {
                   "model": "QualityConfiguration",
@@ -1218,12 +1146,8 @@
               "sensorCalibrations": {
                 "cardinality": "1:N",
                 "on": {
-                  "localFields": [
-                    "id"
-                  ],
-                  "targetFields": [
-                    "siteId"
-                  ]
+                  "localFields": ["id"],
+                  "targetFields": ["siteId"]
                 },
                 "to": {
                   "model": "SensorCalibration",
@@ -1316,12 +1240,8 @@
               "site": {
                 "cardinality": "N:1",
                 "on": {
-                  "localFields": [
-                    "siteId"
-                  ],
-                  "targetFields": [
-                    "id"
-                  ]
+                  "localFields": ["siteId"],
+                  "targetFields": ["id"]
                 },
                 "to": {
                   "model": "Site",
@@ -1457,16 +1377,12 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": [
-                      "site_id"
-                    ],
+                    "columns": ["site_id"],
                     "namespaceId": "public",
                     "tableName": "alerts"
                   },
                   "target": {
-                    "columns": [
-                      "id"
-                    ],
+                    "columns": ["id"],
                     "namespaceId": "public",
                     "tableName": "sites"
                   }
@@ -1474,16 +1390,12 @@
                 {
                   "onDelete": "setNull",
                   "source": {
-                    "columns": [
-                      "event_id"
-                    ],
+                    "columns": ["event_id"],
                     "namespaceId": "public",
                     "tableName": "alerts"
                   },
                   "target": {
-                    "columns": [
-                      "id"
-                    ],
+                    "columns": ["id"],
                     "namespaceId": "public",
                     "tableName": "events"
                   }
@@ -1491,34 +1403,25 @@
               ],
               "indexes": [
                 {
-                  "columns": [
-                    "event_id"
-                  ],
+                  "columns": ["event_id"],
                   "name": "alerts_event_id_idx_a0568112",
                   "prefix": "alerts_event_id_idx",
                   "unique": false
                 },
                 {
-                  "columns": [
-                    "site_id"
-                  ],
+                  "columns": ["site_id"],
                   "name": "alerts_site_id_idx_99208b9d",
                   "prefix": "alerts_site_id_idx",
                   "unique": false
                 },
                 {
-                  "columns": [
-                    "site_id",
-                    "status"
-                  ],
+                  "columns": ["site_id", "status"],
                   "name": "idx_alerts_site_status",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": [
-                  "id"
-                ]
+                "columns": ["id"]
               },
               "uniques": []
             },
@@ -1613,16 +1516,12 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": [
-                      "site_id"
-                    ],
+                    "columns": ["site_id"],
                     "namespaceId": "public",
                     "tableName": "devices"
                   },
                   "target": {
-                    "columns": [
-                      "id"
-                    ],
+                    "columns": ["id"],
                     "namespaceId": "public",
                     "tableName": "sites"
                   }
@@ -1630,17 +1529,13 @@
               ],
               "indexes": [
                 {
-                  "columns": [
-                    "site_id"
-                  ],
+                  "columns": ["site_id"],
                   "name": "idx_devices_site_id",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": [
-                  "id"
-                ]
+                "columns": ["id"]
               },
               "uniques": []
             },
@@ -1720,16 +1615,12 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": [
-                      "site_id"
-                    ],
+                    "columns": ["site_id"],
                     "namespaceId": "public",
                     "tableName": "events"
                   },
                   "target": {
-                    "columns": [
-                      "id"
-                    ],
+                    "columns": ["id"],
                     "namespaceId": "public",
                     "tableName": "sites"
                   }
@@ -1737,16 +1628,12 @@
                 {
                   "onDelete": "setNull",
                   "source": {
-                    "columns": [
-                      "device_id"
-                    ],
+                    "columns": ["device_id"],
                     "namespaceId": "public",
                     "tableName": "events"
                   },
                   "target": {
-                    "columns": [
-                      "id"
-                    ],
+                    "columns": ["id"],
                     "namespaceId": "public",
                     "tableName": "devices"
                   }
@@ -1754,34 +1641,25 @@
               ],
               "indexes": [
                 {
-                  "columns": [
-                    "device_id"
-                  ],
+                  "columns": ["device_id"],
                   "name": "events_device_id_idx_8f329912",
                   "prefix": "events_device_id_idx",
                   "unique": false
                 },
                 {
-                  "columns": [
-                    "site_id"
-                  ],
+                  "columns": ["site_id"],
                   "name": "events_site_id_idx_99208b9d",
                   "prefix": "events_site_id_idx",
                   "unique": false
                 },
                 {
-                  "columns": [
-                    "site_id",
-                    "created_at"
-                  ],
+                  "columns": ["site_id", "created_at"],
                   "name": "idx_events_site_created",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": [
-                  "id"
-                ]
+                "columns": ["id"]
               },
               "uniques": []
             },
@@ -1885,16 +1763,12 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": [
-                      "site_id"
-                    ],
+                    "columns": ["site_id"],
                     "namespaceId": "public",
                     "tableName": "filter_maintenance"
                   },
                   "target": {
-                    "columns": [
-                      "id"
-                    ],
+                    "columns": ["id"],
                     "namespaceId": "public",
                     "tableName": "sites"
                   }
@@ -1902,17 +1776,13 @@
               ],
               "indexes": [
                 {
-                  "columns": [
-                    "site_id"
-                  ],
+                  "columns": ["site_id"],
                   "name": "idx_filter_maintenance_site",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": [
-                  "id"
-                ]
+                "columns": ["id"]
               },
               "uniques": []
             },
@@ -1987,16 +1857,12 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": [
-                      "site_id"
-                    ],
+                    "columns": ["site_id"],
                     "namespaceId": "public",
                     "tableName": "quality_configurations"
                   },
                   "target": {
-                    "columns": [
-                      "id"
-                    ],
+                    "columns": ["id"],
                     "namespaceId": "public",
                     "tableName": "sites"
                   }
@@ -2004,15 +1870,11 @@
               ],
               "indexes": [],
               "primaryKey": {
-                "columns": [
-                  "id"
-                ]
+                "columns": ["id"]
               },
               "uniques": [
                 {
-                  "columns": [
-                    "site_id"
-                  ]
+                  "columns": ["site_id"]
                 }
               ]
             },
@@ -2105,16 +1967,12 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": [
-                      "site_id"
-                    ],
+                    "columns": ["site_id"],
                     "namespaceId": "public",
                     "tableName": "sensor_calibrations"
                   },
                   "target": {
-                    "columns": [
-                      "id"
-                    ],
+                    "columns": ["id"],
                     "namespaceId": "public",
                     "tableName": "sites"
                   }
@@ -2122,16 +1980,12 @@
                 {
                   "onDelete": "setNull",
                   "source": {
-                    "columns": [
-                      "device_id"
-                    ],
+                    "columns": ["device_id"],
                     "namespaceId": "public",
                     "tableName": "sensor_calibrations"
                   },
                   "target": {
-                    "columns": [
-                      "id"
-                    ],
+                    "columns": ["id"],
                     "namespaceId": "public",
                     "tableName": "devices"
                   }
@@ -2139,25 +1993,19 @@
               ],
               "indexes": [
                 {
-                  "columns": [
-                    "site_id"
-                  ],
+                  "columns": ["site_id"],
                   "name": "idx_sensor_calibrations_site",
                   "unique": false
                 },
                 {
-                  "columns": [
-                    "device_id"
-                  ],
+                  "columns": ["device_id"],
                   "name": "sensor_calibrations_device_id_idx_8f329912",
                   "prefix": "sensor_calibrations_device_id_idx",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": [
-                  "id"
-                ]
+                "columns": ["id"]
               },
               "uniques": []
             },
@@ -2218,16 +2066,12 @@
                 {
                   "onDelete": "cascade",
                   "source": {
-                    "columns": [
-                      "site_id"
-                    ],
+                    "columns": ["site_id"],
                     "namespaceId": "public",
                     "tableName": "site_memberships"
                   },
                   "target": {
-                    "columns": [
-                      "id"
-                    ],
+                    "columns": ["id"],
                     "namespaceId": "public",
                     "tableName": "sites"
                   }
@@ -2235,31 +2079,22 @@
               ],
               "indexes": [
                 {
-                  "columns": [
-                    "site_id"
-                  ],
+                  "columns": ["site_id"],
                   "name": "idx_site_memberships_site",
                   "unique": false
                 },
                 {
-                  "columns": [
-                    "user_id"
-                  ],
+                  "columns": ["user_id"],
                   "name": "idx_site_memberships_user",
                   "unique": false
                 }
               ],
               "primaryKey": {
-                "columns": [
-                  "id"
-                ]
+                "columns": ["id"]
               },
               "uniques": [
                 {
-                  "columns": [
-                    "user_id",
-                    "site_id"
-                  ],
+                  "columns": ["user_id", "site_id"],
                   "name": "uq_site_membership"
                 }
               ]
@@ -2345,9 +2180,7 @@
               "foreignKeys": [],
               "indexes": [],
               "primaryKey": {
-                "columns": [
-                  "id"
-                ]
+                "columns": ["id"]
               },
               "uniques": []
             }
@@ -2355,27 +2188,15 @@
           "valueSet": {
             "AlertSeverity": {
               "kind": "valueSet",
-              "values": [
-                "WARNING",
-                "CRITICAL"
-              ]
+              "values": ["WARNING", "CRITICAL"]
             },
             "AlertStatus": {
               "kind": "valueSet",
-              "values": [
-                "UNREAD",
-                "READ",
-                "ACKNOWLEDGED"
-              ]
+              "values": ["UNREAD", "READ", "ACKNOWLEDGED"]
             },
             "DeviceStatus": {
               "kind": "valueSet",
-              "values": [
-                "ONLINE",
-                "DEGRADED",
-                "OFFLINE",
-                "FAULT"
-              ]
+              "values": ["ONLINE", "DEGRADED", "OFFLINE", "FAULT"]
             },
             "DeviceType": {
               "kind": "valueSet",
@@ -2387,54 +2208,27 @@
             },
             "EventSeverity": {
               "kind": "valueSet",
-              "values": [
-                "INFO",
-                "WARNING",
-                "CRITICAL"
-              ]
+              "values": ["INFO", "WARNING", "CRITICAL"]
             },
             "FilterStatus": {
               "kind": "valueSet",
-              "values": [
-                "HEALTHY",
-                "WARNING",
-                "DEGRADED",
-                "FAULT"
-              ]
+              "values": ["HEALTHY", "WARNING", "DEGRADED", "FAULT"]
             },
             "FilterType": {
               "kind": "valueSet",
-              "values": [
-                "SEDIMENT",
-                "CARBON",
-                "CALCITE",
-                "UV"
-              ]
+              "values": ["SEDIMENT", "CARBON", "CALCITE", "UV"]
             },
             "SensorHealthStatus": {
               "kind": "valueSet",
-              "values": [
-                "HEALTHY",
-                "DEGRADED",
-                "CALIBRATION_REQUIRED",
-                "FAULT"
-              ]
+              "values": ["HEALTHY", "DEGRADED", "CALIBRATION_REQUIRED", "FAULT"]
             },
             "SiteStatus": {
               "kind": "valueSet",
-              "values": [
-                "ONLINE",
-                "OFFLINE",
-                "DEGRADED"
-              ]
+              "values": ["ONLINE", "OFFLINE", "DEGRADED"]
             },
             "UserRole": {
               "kind": "valueSet",
-              "values": [
-                "ADMIN",
-                "OPERATOR",
-                "VIEWER"
-              ]
+              "values": ["ADMIN", "OPERATOR", "VIEWER"]
             }
           }
         },

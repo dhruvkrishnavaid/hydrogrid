@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { WaterQualityReading } from "../../../lib/schemas/water-quality";
 import { checkUserSiteAccess } from "../../../server/auth/authorization";
 import { verifyAuthUser } from "../../../server/auth/verify";
+import { ensureServerInitialized } from "../../../server/init";
 import { getAlerts } from "../../../server/repositories/alerts";
 import { getDevicesBySiteId } from "../../../server/repositories/devices";
 import { getEventsBySiteId } from "../../../server/repositories/events";
@@ -32,6 +33,7 @@ export const Route = createFileRoute("/api/dashboard/overview")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        ensureServerInitialized();
         const user = await verifyAuthUser(request);
         if (!user) {
           return apiError("UNAUTHORIZED", "Authentication required", 401);

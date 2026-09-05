@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { checkUserSiteAccess } from "../../../../../server/auth/authorization";
 import { verifyAuthUser } from "../../../../../server/auth/verify";
+import { ensureServerInitialized } from "../../../../../server/init";
 import { subscribeToSiteEvents } from "../../../../../server/services/event-bus";
 import type { SSEMessage } from "../../../../../server/services/event-bus";
 import { apiError } from "../../../../../server/utils/response";
@@ -10,6 +11,7 @@ export const Route = createFileRoute("/api/sites/$siteId/events/stream")({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
+        ensureServerInitialized();
         // Support token in query parameter for EventSource clients or Authorization header
         const url = new URL(request.url);
         const queryToken = url.searchParams.get("token");

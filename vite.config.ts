@@ -6,6 +6,15 @@ import viteReact, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 
+function serverInitPlugin() {
+  return {
+    name: "hydrogrid-server-init",
+    configureServer() {
+      import("./src/server/init").then((m) => m.ensureServerInitialized());
+    },
+  };
+}
+
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
   oxc: {
@@ -14,6 +23,7 @@ const config = defineConfig({
     },
   },
   plugins: [
+    serverInitPlugin(),
     babel({ presets: [reactCompilerPreset()] }),
     devtools({
       injectSource: { enabled: false },

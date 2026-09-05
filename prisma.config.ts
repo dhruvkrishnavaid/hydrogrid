@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { definePrismaConfig } from "prisma/config";
 import { defineConfig as definePostgresConfig } from "@prisma/orm-postgres/config";
+import { definePrismaConfig } from "prisma/config";
 
 const rawDbUrl = process.env["DATABASE_URL"] || "";
 const connection =

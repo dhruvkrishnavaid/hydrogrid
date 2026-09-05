@@ -1,4 +1,5 @@
 import postgres from "@prisma/orm-postgres/runtime";
+
 import type { Contract } from "../../../generated/prisma8/contract.d";
 import contractJson from "../../../generated/prisma8/contract.json" with { type: "json" };
 
@@ -59,7 +60,9 @@ function createModelDelegate(collection: any) {
       }
       if (args?.orderBy) {
         const [field, dir] = Object.entries(args.orderBy)[0];
-        q = q.orderBy((f: any) => (dir === "desc" ? f[field].desc() : f[field].asc()));
+        q = q.orderBy((f: any) =>
+          dir === "desc" ? f[field].desc() : f[field].asc(),
+        );
       }
       if (typeof args?.take === "number") {
         q = q.limit(args.take);
@@ -84,13 +87,17 @@ function createModelDelegate(collection: any) {
     },
 
     async update(args: { where: any; data: any }) {
-      return await collection.where(args.where).update(normalizeDatesInData(args.data));
+      return await collection
+        .where(args.where)
+        .update(normalizeDatesInData(args.data));
     },
 
     async upsert(args: { where: any; update: any; create: any }) {
       const existing = await collection.where(args.where).first();
       if (existing) {
-        return await collection.where(args.where).update(normalizeDatesInData(args.update));
+        return await collection
+          .where(args.where)
+          .update(normalizeDatesInData(args.update));
       } else {
         return await collection.create(normalizeDatesInData(args.create));
       }
@@ -140,7 +147,9 @@ export function getPrismaClient(): PrismaClientCompat | null {
       site: createModelDelegate(db.orm.public.Site),
       device: createModelDelegate(db.orm.public.Device),
       siteMembership: createModelDelegate(db.orm.public.SiteMembership),
-      qualityConfiguration: createModelDelegate(db.orm.public.QualityConfiguration),
+      qualityConfiguration: createModelDelegate(
+        db.orm.public.QualityConfiguration,
+      ),
       event: createModelDelegate(db.orm.public.Event),
       alert: createModelDelegate(db.orm.public.Alert),
       sensorCalibration: createModelDelegate(db.orm.public.SensorCalibration),

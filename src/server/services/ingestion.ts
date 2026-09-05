@@ -10,7 +10,7 @@ import { recordTelemetry } from "./telemetry";
 import { evaluateWaterSafety } from "./water-safety";
 
 export const IngestTelemetryPayloadSchema = z.object({
-  deviceId: z.string().uuid().optional().nullable(),
+  deviceId: z.string().optional().nullable(),
   flowMismatchPercent: z.number().optional().default(0),
   reading: WaterQualityReadingSchema,
 });
@@ -18,7 +18,7 @@ export const IngestTelemetryPayloadSchema = z.object({
 export const IngestCalibrationPayloadSchema = z.object({
   sensor: z.string(),
   offset: z.number().default(0),
-  deviceId: z.string().uuid().optional().nullable(),
+  deviceId: z.string().optional().nullable(),
   status: z
     .enum(["HEALTHY", "DEGRADED", "CALIBRATION_REQUIRED", "FAULT"])
     .optional(),
@@ -98,12 +98,42 @@ export async function processTelemetryIngestion(
       string,
       unknown
     >;
+
+    const readingMap = reading as Record<string, unknown>;
+    const flowRate =
+      typeof readingMap.flowRate === "number"
+        ? readingMap.flowRate
+        : typeof readingMap.flow_rate_lpm === "number"
+          ? readingMap.flow_rate_lpm
+          : typeof readingMap.flow_rate === "number"
+            ? readingMap.flow_rate
+            : undefined;
+
+    const temperature =
+      typeof readingMap.temperature === "number"
+        ? readingMap.temperature
+        : typeof readingMap.temperature_c === "number"
+          ? readingMap.temperature_c
+          : typeof readingMap.temp === "number"
+            ? readingMap.temp
+            : undefined;
+
+    const cleanedReading: Record<string, unknown> = { ...readingMap };
+    if (flowRate !== undefined) cleanedReading.flowRate = flowRate;
+    if (temperature !== undefined) cleanedReading.temperature = temperature;
+    delete cleanedReading.flow_rate_lpm;
+    delete cleanedReading.flow_rate;
+    delete cleanedReading.temperature_c;
+    delete cleanedReading.temp;
+    delete cleanedReading.valve_status;
+    delete cleanedReading.valveStatus;
+
     normalizedPayload = {
       flowMismatchPercent: flowMismatchPercent ?? 0,
       deviceId,
       reading: {
         ...DEFAULT_BASELINE_READING,
-        ...reading,
+        ...cleanedReading,
       },
     };
   } else {
@@ -141,11 +171,20 @@ export async function processTelemetryIngestion(
     flowMismatchPercent,
   );
 
+  const isUuid = (val?: string | null): val is string =>
+    Boolean(
+      val &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        val,
+      ),
+    );
+  const sqlDeviceId = isUuid(effectiveDeviceId) ? effectiveDeviceId : null;
+
   // 3. Trigger events and alerts if safety thresholds violated
   const { event, alert } = await handleSafetyEvents(
     siteId,
     safety,
-    effectiveDeviceId,
+    sqlDeviceId,
   );
 
   // If flowRate > 45.5 L/min, it is automatically assumed as leakage

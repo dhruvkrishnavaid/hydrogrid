@@ -11,8 +11,19 @@ export interface SiteTelemetryState {
   updatedAt: string;
 }
 
-// In-memory latest telemetry state per site
-const latestTelemetryBySite = new Map<string, SiteTelemetryState>();
+declare global {
+  var __hydrogridLatestTelemetryBySite:
+    | Map<string, SiteTelemetryState>
+    | undefined;
+}
+
+// In-memory latest telemetry state per site (persisted across SSR module reloads)
+const latestTelemetryBySite =
+  globalThis.__hydrogridLatestTelemetryBySite ??
+  (globalThis.__hydrogridLatestTelemetryBySite = new Map<
+    string,
+    SiteTelemetryState
+  >());
 
 /**
  * Records telemetry data for a site:
@@ -73,7 +84,10 @@ export async function recordTelemetry(
         await Promise.race([
           writeApi.flush(),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("InfluxDB flush timed out")), 1500),
+            setTimeout(
+              () => reject(new Error("InfluxDB flush timed out")),
+              1500,
+            ),
           ),
         ]);
       }

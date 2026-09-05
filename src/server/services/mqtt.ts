@@ -24,11 +24,54 @@ const DEFAULT_SUB_TOPICS = [
   "hydrogrid/sites/+/devices/+/heartbeat",
 ];
 
-let mqttClient: mqtt.MqttClient | null = null;
-let isConnecting = false;
-let currentConnectedBrokerUrl: string | undefined = undefined;
-let messagesReceivedCount = 0;
-let lastMessageTimestamp: string | undefined = undefined;
+declare global {
+  var __hydrogridMqttClient: mqtt.MqttClient | null | undefined;
+  var __hydrogridMqttConnecting: boolean | undefined;
+  var __hydrogridMqttConnectedBrokerUrl: string | undefined;
+  var __hydrogridMqttMessagesReceivedCount: number | undefined;
+  var __hydrogridMqttLastMessageTimestamp: string | undefined;
+}
+
+function getMqttClient(): mqtt.MqttClient | null {
+  return globalThis.__hydrogridMqttClient ?? null;
+}
+
+function setMqttClient(client: mqtt.MqttClient | null) {
+  globalThis.__hydrogridMqttClient = client;
+}
+
+function isMqttConnecting(): boolean {
+  return globalThis.__hydrogridMqttConnecting ?? false;
+}
+
+function setMqttConnecting(val: boolean) {
+  globalThis.__hydrogridMqttConnecting = val;
+}
+
+function getConnectedBrokerUrl(): string | undefined {
+  return globalThis.__hydrogridMqttConnectedBrokerUrl;
+}
+
+function setConnectedBrokerUrl(url: string | undefined) {
+  globalThis.__hydrogridMqttConnectedBrokerUrl = url;
+}
+
+function getMessagesReceivedCount(): number {
+  return globalThis.__hydrogridMqttMessagesReceivedCount ?? 0;
+}
+
+function incrementMessagesReceivedCount() {
+  globalThis.__hydrogridMqttMessagesReceivedCount =
+    (globalThis.__hydrogridMqttMessagesReceivedCount ?? 0) + 1;
+}
+
+function getLastMessageTimestamp(): string | undefined {
+  return globalThis.__hydrogridMqttLastMessageTimestamp;
+}
+
+function setLastMessageTimestamp(ts: string) {
+  globalThis.__hydrogridMqttLastMessageTimestamp = ts;
+}
 
 /**
  * Normalizes user-configured broker URLs to valid MQTT connection strings.
@@ -118,8 +161,8 @@ export async function handleMqttMessage(
   topic: string,
   payloadBuffer: Buffer | Uint8Array,
 ): Promise<void> {
-  messagesReceivedCount++;
-  lastMessageTimestamp = new Date().toISOString();
+  incrementMessagesReceivedCount();
+  setLastMessageTimestamp(new Date().toISOString());
 
   let payloadJson: unknown;
   try {
@@ -207,32 +250,34 @@ export function startMqttClient(): mqtt.MqttClient | null {
 
   const brokerUrl = normalizeMqttBrokerUrl(rawBrokerUrl);
 
+  const currentClient = getMqttClient();
+  const currentBroker = getConnectedBrokerUrl();
+
   // If already connected to this exact broker, return existing client
-  if (mqttClient && currentConnectedBrokerUrl === brokerUrl) {
-    return mqttClient;
+  if (currentClient && currentBroker === brokerUrl) {
+    return currentClient;
   }
 
   // If connected to a different broker (e.g. env changed from localhost to HiveMQ), close the previous one
-  if (mqttClient) {
+  if (currentClient) {
     try {
-      mqttClient.end(true);
+      currentClient.end(true);
     } catch {
       // ignore
     }
-    mqttClient = null;
-    isConnecting = false;
+    setMqttClient(null);
+    setMqttConnecting(false);
   }
 
-  if (isConnecting) {
+  if (isMqttConnecting()) {
     return null;
   }
 
-  isConnecting = true;
-  currentConnectedBrokerUrl = brokerUrl;
+  setMqttConnecting(true);
+  setConnectedBrokerUrl(brokerUrl);
 
-  const clientId =
-    config.MQTT_CLIENT_ID ||
-    `hydrogrid-server-${Math.random().toString(16).substring(2, 8)}`;
+  const baseClientId = config.MQTT_CLIENT_ID || "hydrogrid-server";
+  const clientId = `${baseClientId}-${Math.random().toString(16).substring(2, 8)}`;
 
   const options: mqtt.IClientOptions = {
     clientId,
@@ -249,16 +294,17 @@ export function startMqttClient(): mqtt.MqttClient | null {
   }
 
   try {
-    mqttClient = mqtt.connect(brokerUrl, options);
+    const client = mqtt.connect(brokerUrl, options);
+    setMqttClient(client);
 
-    mqttClient.on("connect", () => {
-      isConnecting = false;
+    client.on("connect", () => {
+      setMqttConnecting(false);
       console.log(
         `[MQTT] Connected to broker: ${brokerUrl} (Client ID: ${clientId})`,
       );
 
       // Subscribe to data entry topics with QoS 1
-      mqttClient?.subscribe(DEFAULT_SUB_TOPICS, { qos: 1 }, (err) => {
+      client.subscribe(DEFAULT_SUB_TOPICS, { qos: 1 }, (err) => {
         if (err) {
           console.error("[MQTT] Subscription error:", err);
         } else {
@@ -269,26 +315,26 @@ export function startMqttClient(): mqtt.MqttClient | null {
       });
     });
 
-    mqttClient.on("message", (topic, payload) => {
+    client.on("message", (topic, payload) => {
       void handleMqttMessage(topic, payload);
     });
 
-    mqttClient.on("error", (err) => {
+    client.on("error", (err) => {
       console.warn(`[MQTT] Connection error to ${brokerUrl}:`, err.message);
     });
 
-    mqttClient.on("offline", () => {
+    client.on("offline", () => {
       console.warn("[MQTT] Broker offline, awaiting reconnection...");
     });
 
-    mqttClient.on("close", () => {
+    client.on("close", () => {
       // Disconnected
     });
 
-    return mqttClient;
+    return client;
   } catch (err: unknown) {
-    isConnecting = false;
-    currentConnectedBrokerUrl = undefined;
+    setMqttConnecting(false);
+    setConnectedBrokerUrl(undefined);
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error("[MQTT] Failed to initialize MQTT client:", errorMsg);
     return null;
@@ -320,7 +366,8 @@ export function publishMqtt(
   payload: unknown,
   options?: mqtt.IClientPublishOptions,
 ): boolean {
-  if (!mqttClient || !mqttClient.connected) {
+  const client = getMqttClient();
+  if (!client || !client.connected) {
     return false;
   }
 
@@ -328,7 +375,7 @@ export function publishMqtt(
     const stringPayload =
       typeof payload === "string" ? payload : JSON.stringify(payload);
 
-    mqttClient.publish(topic, stringPayload, options ?? { qos: 1 });
+    client.publish(topic, stringPayload, options ?? { qos: 1 });
     return true;
   } catch (err) {
     console.error(`[MQTT] Failed to publish message to topic ${topic}:`, err);
@@ -346,15 +393,16 @@ export function getMqttStatus(): MqttStatus {
     ? normalizeMqttBrokerUrl(rawBrokerUrl)
     : undefined;
   const isEnabled = Boolean(config.MQTT_ENABLED || rawBrokerUrl);
+  const client = getMqttClient();
 
   return {
     enabled: isEnabled,
-    connected: Boolean(mqttClient && mqttClient.connected),
+    connected: Boolean(client && client.connected),
     brokerUrl,
     clientId: config.MQTT_CLIENT_ID,
     subscribedTopics: DEFAULT_SUB_TOPICS,
-    lastMessageAt: lastMessageTimestamp,
-    messagesReceived: messagesReceivedCount,
+    lastMessageAt: getLastMessageTimestamp(),
+    messagesReceived: getMessagesReceivedCount(),
   };
 }
 
@@ -363,15 +411,16 @@ export function getMqttStatus(): MqttStatus {
  */
 export function stopMqttClient(): Promise<void> {
   return new Promise((resolve) => {
-    if (!mqttClient) {
+    const client = getMqttClient();
+    if (!client) {
       resolve();
       return;
     }
 
-    mqttClient.end(false, {}, () => {
-      mqttClient = null;
-      isConnecting = false;
-      currentConnectedBrokerUrl = undefined;
+    client.end(false, {}, () => {
+      setMqttClient(null);
+      setMqttConnecting(false);
+      setConnectedBrokerUrl(undefined);
       resolve();
     });
   });
